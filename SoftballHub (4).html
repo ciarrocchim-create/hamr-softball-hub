@@ -1,0 +1,1919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>⚡ HAMR Softball Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --navy:#0b0f1a;--surface:#141927;--card:#1c2236;--border:#2b3454;
+  --gold:#f0a500;--green:#3ddc84;--red:#f16b6b;--blue:#5b8af5;--purple:#c97af5;
+  --text:#e6eaf4;--muted:#7b88a8;--dim:#252e47;
+  --cat-hitting:#f0a500;--cat-pitching:#5b8af5;--cat-fielding:#3ddc84;
+  --cat-catching:#c97af5;--cat-baserunning:#f5a05b;--cat-conditioning:#f16b6b;--cat-other:#7b88a8;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--navy);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;overflow-x:hidden}
+input,select,textarea,button{font-family:inherit;font-size:14px;outline:none}
+input,select,textarea{background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 12px;width:100%;transition:.15s}
+input:focus,select:focus,textarea:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(240,165,0,.15)}
+textarea{resize:vertical;min-height:70px}
+select option{background:var(--card)}
+a{color:var(--gold);text-decoration:none}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── Layout ── */
+#app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+#hdr{background:var(--surface);border-bottom:2px solid var(--gold);padding:10px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:10}
+#hdr .logo{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:var(--gold);letter-spacing:2px;line-height:1}
+#hdr .sub{color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+#hdr-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+#hdr-counts{font-size:11px;color:var(--muted);display:flex;gap:10px}
+#hdr-counts strong{color:var(--text)}
+#save-status{font-size:11px;font-weight:700;min-width:60px;text-align:right}
+
+/* ── Desktop Nav ── */
+#nav{background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:2px;padding:6px 18px;overflow-x:auto;flex-shrink:0;scrollbar-width:none}
+#nav::-webkit-scrollbar{display:none}
+#nav button{background:transparent;border:none;color:var(--muted);padding:7px 16px;border-radius:7px;cursor:pointer;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;white-space:nowrap;display:flex;align-items:center;gap:5px;transition:.12s}
+#nav button:hover{background:var(--dim);color:var(--text)}
+#nav button.active{background:var(--gold);color:#000}
+
+/* ── Content ── */
+#content{flex:1;overflow-y:auto;padding:20px;padding-bottom:24px}
+.inner{max-width:1140px;margin:0 auto}
+
+/* ── Mobile Nav ── */
+#mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:100;background:var(--surface);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom)}
+#mob-nav .grid{display:grid;grid-template-columns:repeat(7,1fr)}
+#mob-nav button{background:transparent;border:none;color:var(--muted);padding:7px 2px 5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:8px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;width:100%}
+#mob-nav button .ico{font-size:19px;line-height:1.2}
+#mob-nav button.active{color:var(--gold)}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+.surface{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.col{display:flex;flex-direction:column;gap:12px}
+.f1{flex:1;min-width:0}
+.grid-auto{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:5px;border:none;border-radius:8px;padding:9px 18px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit;font-size:14px;transition:.12s;line-height:1}
+.btn:active{transform:scale(.97)}
+.btn-gold{background:var(--gold);color:#000}.btn-gold:hover{background:#ffc845}
+.btn-green{background:var(--green);color:#000}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-red{background:var(--red);color:#fff}
+.btn-dim{background:var(--dim);color:var(--text)}
+.btn-dim:hover{background:#313d5f}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:7px}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:5px}
+label.btn{cursor:pointer}
+
+/* ── Badges ── */
+.badge{display:inline-block;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;white-space:nowrap;line-height:1.4}
+.lbl{font-size:11px;color:var(--muted);margin-bottom:5px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;display:block}
+
+/* ── Toggles ── */
+.tog{border:1px solid var(--border);background:var(--surface);color:var(--muted);border-radius:7px;padding:5px 12px;font-size:12px;cursor:pointer;font-weight:700;font-family:inherit;transition:.1s;white-space:nowrap}
+.tog:hover{border-color:var(--gold);color:var(--text)}
+.tog.on{background:var(--gold);color:#000;border-color:var(--gold)}
+
+/* ── Modal ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;backdrop-filter:blur(2px)}
+.mbox{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:540px;box-shadow:0 24px 80px rgba(0,0,0,.7);margin:auto}
+.mbox.wide{max-width:880px}
+.mhdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.mhdr h3{font-family:'Barlow Condensed',sans-serif;font-size:21px;font-weight:800}
+.xbtn{background:none;border:none;color:var(--muted);font-size:28px;cursor:pointer;line-height:1;padding:0;transition:.1s}
+.xbtn:hover{color:var(--text)}
+
+/* ── Misc ── */
+.empty{text-align:center;color:var(--muted);padding:48px 20px;font-style:italic;font-size:13px}
+.hidden{display:none!important}
+h2.st{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;color:var(--gold);letter-spacing:1px}
+.tip{font-size:12px;color:var(--muted);line-height:1.7}
+pre.code{font-family:monospace;font-size:11px;background:var(--navy);color:var(--green);padding:14px;border-radius:8px;overflow:auto;max-height:200px;white-space:pre-wrap;word-break:break-all;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);color:var(--muted);font-size:10px;text-transform:uppercase;font-weight:700;letter-spacing:.5px}
+td{padding:7px 10px;border-bottom:1px solid rgba(43,52,84,.35)}
+.chart-wrap{width:100%;height:180px}
+canvas{display:block;width:100%!important}
+
+/* ── Drill cards ── */
+.drill-card{cursor:pointer;transition:.1s;border-top:3px solid var(--border)}
+.drill-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.drill-desc{font-size:12px;color:var(--muted);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-top:5px}
+
+/* ── Plan items ── */
+.plan-item{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:8px}
+.sblock{background:#131e30;border:2px solid var(--blue);border-radius:10px;padding:14px;margin-bottom:10px}
+.sgrid{display:grid;gap:8px}
+.scell{background:var(--surface);border-radius:8px;padding:10px;border:1px solid #5b8af533}
+
+/* ── Stopwatch ── */
+.sw-time{font-family:'Barlow Condensed',sans-serif;font-size:84px;font-weight:900;line-height:1;text-align:center;letter-spacing:3px;transition:color .2s}
+.sw-btn{border:none;border-radius:50%;width:110px;height:110px;font-size:34px;font-weight:900;cursor:pointer;transition:.15s;font-family:'Barlow Condensed',sans-serif;letter-spacing:1px}
+.pchip{background:var(--surface);border:2px solid var(--border);border-radius:9px;padding:9px 6px;cursor:pointer;font-weight:700;font-size:12px;text-align:center;transition:.12s;line-height:1.3}
+.pchip.on{background:var(--gold);border-color:var(--gold);color:#000}
+
+/* ── Setup ── */
+#setup{position:fixed;inset:0;background:var(--navy);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto}
+.setup-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;width:100%;max-width:600px}
+.dots{display:flex;gap:6px;margin-bottom:24px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dim);transition:.2s}
+.dot.on{background:var(--gold)}
+
+/* ── Mobile overrides ── */
+@media(max-width:768px){
+  #nav{display:none}
+  #mob-nav{display:block}
+  #content{padding:12px;padding-bottom:84px}
+  .grid2{grid-template-columns:1fr}
+  .grid-auto{grid-template-columns:1fr 1fr}
+  .mbox{border-radius:14px 14px 0 0;max-height:92dvh;overflow-y:auto;margin:auto 0 0}
+  .overlay{padding:0;align-items:flex-end}
+  .sw-time{font-size:68px}
+  .sw-btn{width:96px;height:96px}
+  h2.st{font-size:24px}
+  #hdr-counts{display:none}
+}
+@media(max-width:480px){
+  .grid-auto{grid-template-columns:1fr}
+  #hdr .sub{display:none}
+}
+@media print{#hdr,#nav,#mob-nav{display:none!important}#content{padding:0}}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<div id="setup">
+  <div class="setup-box">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;color:var(--gold);letter-spacing:2px;margin-bottom:4px">⚡ HAMR Softball Hub</div>
+    <div style="color:var(--muted);font-size:12px;margin-bottom:24px">HAMR Hawks · 12U · Powered by GitHub Gist sync</div>
+    <div class="dots" id="dots"></div>
+    <div id="setup-body"></div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" class="hidden">
+  <div id="hdr">
+    <div>
+      <div class="logo">⚡ HAMR Softball Hub</div>
+      <div class="sub">HAMR Hawks · 12U</div>
+    </div>
+    <div id="hdr-right">
+      <div id="hdr-counts"></div>
+      <span id="save-status"></span>
+      <button class="btn btn-dim btn-sm" onclick="doRefresh()" title="Refresh">↻</button>
+      <button class="btn btn-dim btn-sm" onclick="showSettings()">⚙ Settings</button>
+    </div>
+  </div>
+
+  <div id="nav">
+    <button class="active" data-tab="drills" onclick="goTab(this)">📚 Drills</button>
+    <button data-tab="roster" onclick="goTab(this)">👥 Roster</button>
+    <button data-tab="plans" onclick="goTab(this)">📋 Plans</button>
+    <button data-tab="skills" onclick="goTab(this)">⭐ Skills</button>
+    <button data-tab="dev" onclick="goTab(this)">📈 Development</button>
+    <button data-tab="lineups" onclick="goTab(this)">⚾ Lineups</button>
+    <button data-tab="stats" onclick="goTab(this)">📊 Stats</button>
+  </div>
+
+  <div id="content"><div class="inner" id="main"></div></div>
+
+  <div id="mob-nav">
+    <div class="grid">
+      <button class="active" data-tab="drills" onclick="goTab(this)"><span class="ico">📚</span>Drills</button>
+      <button data-tab="roster" onclick="goTab(this)"><span class="ico">👥</span>Roster</button>
+      <button data-tab="plans" onclick="goTab(this)"><span class="ico">📋</span>Plans</button>
+      <button data-tab="skills" onclick="goTab(this)"><span class="ico">⭐</span>Skills</button>
+      <button data-tab="dev" onclick="goTab(this)"><span class="ico">📈</span>Dev</button>
+      <button data-tab="lineups" onclick="goTab(this)"><span class="ico">⚾</span>Lineups</button>
+      <button data-tab="stats" onclick="goTab(this)"><span class="ico">📊</span>Stats</button>
+    </div>
+  </div>
+</div>
+
+<div id="modal"></div>
+<script>
+const SEED_DRILLS = [
+ // HITTING
+ {name:"Flamingo Drill",category:"Hitting",url:"",tags:"hip coil, weight transfer, balance, lunging fix, load, separation",description:"Stand on back leg only. Load into hip coil then fire hips through contact while maintaining balance…"},
+ {name:"Reverse Top Hand Drill",category:"Hitting",url:"",tags:"casting, hand path, top hand, bat speed, barrel control, mechanics fix",description:"Grip bat with top hand only. 5–10 swings pulling the knob through the zone. Eliminates casting…"},
+ {name:"Bottom Hand Drill",category:"Hitting",url:"",tags:"lead hand, extension, front side, bat path, roll over fix",description:"Grip bat with lead hand only. 5–10 swings. Lead arm stays connected and drives through contact…"},
+ {name:"Front/Back Tee Drill",category:"Hitting",url:"",tags:"weight shift, staying back, load, balance, swing plane, tee work",description:"Two tees: one at front hip (contact), one at back hip (load). Drive through the front tee…"},
+ {name:"Knob to Knee Drill",category:"Hitting",url:"",tags:"load, separation, hip-to-hand sequence, hand path, swing start",description:"From load, drive the knob toward the front knee before the barrel comes through…"},
+ {name:"Intent Hitting — Tee Progression",category:"Hitting",url:"",tags:"directional hitting, situational awareness, game plan, competition, intent",description:"Alternate tee inside/outside. Coach calls '1B' (gap), '2B' (pull), or 'Sac' before each swing…"},
+ {name:"Stop Casting Drill",category:"Hitting",url:"https://www.youtube.com/watch?v=zOIRFWR0tvo&t=117",tags:"casting, hand path, inside-out swing, barrel control, mechanics fix, front tee",description:"Place a tee just outside and ahead of the front foot…"},
+ {name:"Bunting — Pivot & Soft Hands",category:"Hitting",url:"",tags:"bunting, sacrifice bunt, placement, bunt for hit, short game, soft hands",description:"Pivot front foot open, slide top hand to label, hold bat at top of zone and give with hand…"},
+ {name:"Side-by-Side Competition",category:"Hitting",url:"",tags:"competition, focus, line drives, contact quality, motivation, game pressure",description:"Two batters on adjacent tees, 5 swings each. Points: solid line drive (+2), correct direct…"},
+ {name:"High Tee Drill",category:"Hitting",url:"",tags:"swing plane, high pitch, extension, barrel, contact point, tee work",description:"Set tee at shoulder height. Hit balls off the high tee to train an upward/level swing path…"},
+ // PITCHING
+ {name:"Walk-Through Pitching Drill",category:"Pitching",url:"",tags:"mechanics, muscle memory, arm circle, drive, release point, sequencing",description:"Walk through delivery at half-speed isolating one phase per rep: (1) drive, (2) arm circle…"},
+ {name:"4-Step Pitching Progression",category:"Pitching",url:"",tags:"mechanics, drive, arm circle, snap, release, follow-through",description:"Four checkpoints drilled one at a time: (1) Drive off rubber, (2) Arm Circle — full 12 o'clock path…"},
+ {name:"Tee-on-Home-Plate Timing Drill",category:"Pitching",url:"",tags:"release point, timing, batter interaction, consistency, game simulation",description:"Place tee with ball on home plate. Pitcher goes through full delivery while batter times a…"},
+ // FIELDING — INFIELD
+ {name:"Everydays",category:"Fielding",url:"",tags:"fundamentals, soft hands, forehand, backhand, footwork, fly balls, ground balls, daily warmup, everydays, outfield, transfer, approach angle, cutoff relay",description:"Done at the start of EVERY practice. Split into infield and outfield groups.\n\nINFIELD — From Knees (partners 10–15 ft apart): 5 middle, 5 forehand, 5 backhand. Soft hands, funnel to center, quick transfer. Isolates hand mechanics.\n\nINFIELD — From Feet: same reps but standing. Add footwork: attack at angle, field at instep, clean transfer. Progress to adding a throw.\n\nOUTFIELD: (1) 5 ground balls — one knee, block, throw in. (2) 5 ground balls — field and immediately throw to cutoff. (3) 5 pop flies — call 'Mine!' and catch. Focus: low center of gravity, loud communication, relay to correct cutoff."},
+
+ 
+ {name:"Ground Ball Bucket Drill",category:"Fielding",url:"",tags:"ground balls, throwing to first, accuracy, transition, repetition, routine plays",description:"4 lines at infield positions. Coach rolls → fielder throws to target girl → she drops in b…"},
+ {name:"Game Situation Coverage Drill",category:"Fielding",url:"",tags:"base coverage, decision-making, game awareness, communication, game simulation",description:"2 at every infield position + P + C + 4 baserunners…"},
+ {name:"Chaos Drill",category:"Fielding",url:"",tags:"reaction, multi-skill, pressure, ground balls, pop flies, agility, footwork, transition, concentration, chaos",description:"Four-skill continuous sequence — drill ends when the final ball hits the glove. No breaks between stages; the speed creates the chaos.\n\nStep 1 — Backpedal Reaction:\n\u2022 Player runs backward (back to coach) toward pitcher's circle\n\u2022 On 'NOW!' — quick turn to face coach\n\u2022 Coach throws short-hop grounder\n\u2022 Field it and throw back\n\nStep 2 — Pop Fly Transition:\n\u2022 Immediately, coach throws pop fly toward 1B foul line\n\u2022 Player adjusts, reads, catches, throws back\n\nStep 3 — Angle Ground Ball:\n\u2022 Player sprints toward 3B side\n\u2022 Coach throws grounder on the move\n\u2022 Player fields while moving and throws back on the run — no stopping to set\n\nStep 4 — Pop Fly to Finish:\n\u2022 Coach throws pop fly back toward pitcher's mound\n\u2022 Drill ends when ball hits the glove\n\nCue: Speed of the sequence is the point — react, don't think between steps."},
+ {name:"Quick-Decision Fielding — Verbal Calls",category:"Fielding",url:"",tags:"pre-pitch plan, decisiveness, communication, no hesitation, verbal calls",description:"Fielders call the play WHILE ball is on ground: 'Going 1!', 'Going 2!'…"},
+ {name:"Mini Infield Drill — Quiet Release",category:"Fielding",url:"",tags:"quick release, footwork, range, progressions, soft hands, infield",description:"Run infield at 10 feet, then mid-range, then full distance…"},
+ {name:"Side Steps Drill",category:"Fielding",url:"",tags:"fluidity, footwork, lateral movement, ready position, infield, agility",description:"Fielder in ready position. Coach points left or right; fielder takes 2–3 rapid side-steps …"},
+ {name:"Hit the Target Throwing Drill",category:"Fielding",url:"",tags:"throwing accuracy, target, infield throws, intentional throwing, precision",description:"After fielding, throw at a specific target held by a partner — knee, chest, or specific spot…"},
+ {name:"T Drill / Y Drill — Lateral Movement",category:"Fielding",url:"",tags:"footwork, agility, lateral movement, range, first step, quickness, cone drill",description:"T Drill: cones in T shape — sprint straight, shuffle left, shuffle right, backpedal…"},
+ {name:"Paddle Drill (Soft Hands)",category:"Fielding",url:"",tags:"soft hands, glove control, hand position, fundamentals, short hops, infield",description:"Replace gloves with soft-hands paddles. Field ground balls, short hops, forehands, backhands…"},
+ // OUTFIELD
+ 
+ {name:"Ball Hawk Competition (Blue v Gold)",category:"Fielding",url:"",tags:"competition, positioning, communication, behavior-based, outfield, game pressure, ball hawk",description:"Points for CORRECT BEHAVIOR: right position, right call, right coverage…"},
+ {name:"Drop Step Drill",category:"Fielding",url:"https://www.youtube.com/watch?v=bMSdRRAqI0Q",tags:"drop step, first step, fly balls, outfield footwork, angles, opening hips, reaction",description:"Outfielder in ready position. Coach points over shoulder; player drops that foot back, opens hips…"},
+ {name:"Cone Drop Step Drill",category:"Fielding",url:"",tags:"drop step, first step, agility, outfield footwork, cone drill, reaction",description:"4 cones in diamond around outfielder. Coach calls direction; player drop-steps and sprints…"},
+ {name:"Tweeners Communication Drill",category:"Fielding",url:"",tags:"communication, priority calls, in-between balls, outfield, ball hawk, teamwork",description:"Coach hits into the gap between two fielders. Both sprint — whoever calls 'Mine!' first ha…"},
+ {name:"Belly Drill",category:"Fielding",url:"",tags:"reaction, first step, fly balls, conditioning, explosion, outfield",description:"Outfielders lie on belly. On signal, spring up, sprint toward foul line, turn, track down …"},
+ {name:"Over/Under Team Challenge",category:"Fielding",url:"",tags:"fly balls, range, communication, team challenge, competition, outfield depth",description:"Coach hits fly balls progressively farther. Track: how many in a row without a drop (Over)…"},
+ // CUTOFFS
+ {name:"Cutoff Relay Race",category:"Fielding",url:"",tags:"relay throws, cutoff positioning, accuracy, teamwork, outfield-to-infield",description:"Two relay lanes. Ball travels LF→SS→C or CF→2B→3B. Each player sets up correct angle, give…"},
+ {name:"Cutoff Scenarios — Full Field",category:"Fielding",url:"",tags:"cutoff, relay, game situation, decision-making, communication, full field",description:"Full alignment + 4 baserunners. Coach hits; correct player becomes cutoff, yells directional call…"},
+ {name:"Decision Throws — Mid-Relay Call",category:"Fielding",url:"",tags:"cutoff, adaptability, listening, relay, communication, mid-play adjustment",description:"During relay drills, coach shouts 'Cut 2!' or 'Let it go!' while ball is in the air…"},
+ // THROWING
+ {name:"U to L Throwing Drill",category:"Fielding",url:"",tags:"arm path, L position, mechanics, elbow drop fix, throwing fundamentals",description:"Arm makes U (down and under) then up to L position (upper arm parallel, forearm up)…"},
+ {name:"Long Toss",category:"Fielding",url:"",tags:"arm strength, throwing mechanics, carry, extension, arm conditioning",description:"Start at 30 feet, take 5 throws, step back 10 feet. Repeat out to max comfortable distance…"},
+ {name:"Wall Drill",category:"Fielding",url:"",tags:"arm path, L position, mechanics fix, elbow, throwing fundamentals, home practice",description:"Face a wall 6–8 feet away. Make throwing motion — wall stops arm before full extension and…"},
+ // BASERUNNING
+ {name:"Base Progression Drill",category:"Baserunning",url:"",tags:"baserunning, turns, rounding bases, scoring, aggression, leads, fundamentals",description:"Circuit: (1) Single — run through first, (2) Double — proper turn, (3) Triple — turns at both…"},
+ {name:"Steal Coverage Drill",category:"Baserunning",url:"",tags:"stealing, leads, sprinter start, reads, delayed steal, baserunning aggression",description:"Runners break on signal. Focus: fast leaving/slow walking back; sprinter start; don't look…"},
+ {name:"Pickle / Rundown Drill",category:"Baserunning",url:"",tags:"rundown, pickle, baserunning decisions, communication, pressure, tagging",description:"3 fielders in rundown; 1 runner caught. Fielder rule: run runner back…"},
+ {name:"1st and 3rd Drill",category:"Baserunning",url:"",tags:"1st and 3rd, steal, delayed steal, baserunning reads, defensive coverage",description:"Runners on 1st and 3rd. Offense: straight steal, delayed steal, fake steal. Defense: throw through…"},
+ {name:"Aggressive Corners & Scoring Drill",category:"Baserunning",url:"",tags:"rounding bases, first-to-third, scoring, aggression, smart baserunning, corners",description:"Runners hit the inside corner of every bag. Round 1st aggressively; read balls into gaps; …"},
+ // CATCHING
+ {name:"Waving / Presentation Drill",category:"Catching",url:"",tags:"receiving, framing, glove presentation, blocking, catcher technique, tennis balls",description:"Use tennis balls. Catcher in crouch. Coach throws to different spots…"},
+ {name:"Triangle Catch & Throw Drill",category:"Catching",url:"",tags:"quick release, transfer, footwork, throwing, catcher fundamentals, pop time",description:"Two catchers start with ball in glove. Signal → catch → quick transfer → throw in one flui…"},
+ {name:"4 Balls Blocking Drill",category:"Catching",url:"",tags:"blocking, dirt balls, body positioning, quick recovery, catcher mechanics",description:"Coach fires 4 balls rapid-fire: left, right, straight, left…"},
+ {name:"Backhand Catching Drill",category:"Catching",url:"",tags:"backhand, glove work, receiving, range, catcher technique",description:"Coach flips balls to backhand side at ear, hip, and knee height. Catcher reaches across to secure…"},
+ // CONDITIONING
+ {name:"Foul Line Throwing Warmup",category:"Conditioning",url:"",tags:"warmup, arm warmup, throwing mechanics, daily routine, everydays, fundamentals",description:"Everyone pairs up and throws up/down foul line 5–10 min. Start at 20 feet, step back after 5 throws…"},
+ {name:"Softball Ready Stretching",category:"Conditioning",url:"",tags:"reaction, alertness, fly balls, ground balls, warmup, fun, ball hawk, agility",description:"Players wear gloves during stretching. Coaches hold 2–4 balls. Mid-stretch…"},
+ {name:"Snap Focus Stretching",category:"Conditioning",url:"",tags:"reaction, fielding stance, alertness, agility, mental focus, warmup",description:"Regular stretches + reaction: one clap → drop into fielding stance; two claps → sprint to cone…"},
+ {name:"Agility Speed Drill — Controlled Fluidity",category:"Conditioning",url:"",tags:"agility, speed, footwork, fluidity, conditioning, first step, explosion",description:"Cones around the infield. Players run through at controlled speed — fast but in total body control…"},
+ {name:"Dynamic Warmup Routine",category:"Conditioning",url:"",tags:"warmup, dynamic stretching, high knees, agility, youth, conditioning, K-3rd",description:"Full-body dynamic sequence: high knees, butt kicks, frog jumps, zombie walks, crab walk, c…"},
+ // THROWING — YOUTH
+ {name:"Wrist Flicks",category:"Fielding",url:"",tags:"wrist snap, throwing mechanics, warmup, release point, spin, arm activation",description:"Partners 10–15 feet apart. Snap the ball using only wrist action — arm mostly still…"},
+ {name:"Feet in the Mud Throwing Drill",category:"Fielding",url:"",tags:"throwing mechanics, hip rotation, trunk rotation, no stride, fundamentals, warmup",description:"Partners 20 feet apart. Feet planted — cannot move at all. Using only upper body and wrist snap…"},
+ {name:"Shuffle & Throw Cone Drill",category:"Fielding",url:"",tags:"shuffle, footwork, momentum, throwing mechanics, ready position, reaction, cone drill",description:"Cone lane toward a net. Progress 1: catch side toss and throw…"},
+ {name:"Alligator Ground Ball Drill",category:"Fielding",url:"",tags:"ground balls, fielding fundamentals, soft hands, alligator, youth, bent knees, glove work, K-3rd",description:"Cones mark foot position. Coach demonstrates: bent knees, glove as ramp, top hand clamps l…"},
+ {name:"Belly Up Ground Ball Drill",category:"Fielding",url:"",tags:"reaction, first step, explosion, fielding, ground balls, youth, athleticism",description:"Players lie flat on belly. On 'Go!' spring up, sprint to ball, field and throw to first…"},
+ {name:"Stutter Step Approach Drill",category:"Fielding",url:"",tags:"stutter step, approach, footwork, balance, momentum control, fielding, pop fly, 4th-6th",description:"2 cones 2 feet apart. Player approaches first cone and stutter-steps until coach says 'Go!'…"},
+ {name:"Circle of Death",category:"Fielding",url:"",tags:"quick release, catch and throw, communication, pressure, competition, circle drill, 4th-6th",description:"8 cones in a circle. Ball thrown around — field cleanly and fire to next player. Count errors…"},
+ // OTHER / GAMES
+ {name:"Queen of the Hill",category:"Other",url:"",tags:"competition, fielding, fun, end-of-practice, motivation, ground balls, fly balls",description:"One player is 'Queen' at a position. Coach hits — if she fields cleanly she stays…"},
+ {name:"Tic Tac Toe Relay",category:"Other",url:"",tags:"conditioning, sprinting, baserunning, fun, competition, team building, agility",description:"Two teams race to place markers on a 3×3 tic-tac-toe grid…"},
+ {name:"1-1 Count Scrimmage",category:"Other",url:"",tags:"scrimmage, game situations, pitching, batting, all skills, competition, game simulation",description:"Every at-bat starts at 1-1 count. Eliminates long at-bats, forces immediate competition…"},
+ {name:"Circle Name Game",category:"Other",url:"",tags:"team building, communication, names, throwing, fun, first practice, icebreaker",description:"Circle — throw ball across and say the target's NAME before releasing…"},
+ {name:"Guts Game (Hold the Line)",category:"Other",url:"",tags:"confidence, catching, bravery, fun, throwing, competition, reaction",description:"Two lines 20–30 feet apart. Player throws as hard as possible — opposing line must catch o…"},
+ {name:"Cone Balance Relay Race",category:"Other",url:"",tags:"relay, conditioning, sprinting, fun, change of direction, team building, competition",description:"5 cones per team. Place: first girl runs ball to each cone and balances it, then high-five…"},
+ {name:"Tag the Runner Tee Game",category:"Other",url:"",tags:"fun, baserunning, hustle, fielding aggression, youth, tee game, K-3rd, end-of-practice",description:"Batter hits off tee and runs bases. Every other player chases the ball — whoever gets it t…"},
+ {name:"Short Steps Footwork Drill",category:"Fielding",url:"https://www.youtube.com/shorts/9-_STw55oaM?feature=share",tags:"footwork, short steps, infield, ready position, shuffle, lateral movement, balance, approach",description:"Quick short steps to get body in right fielding position before the ball arrives…"},
+ {name:"Proper Throwing Alignment Drill",category:"Fielding",url:"https://youtube.com/shorts/J9ZeO9c96U0?si=a-RZO4l4MpTQD8PI",tags:"throwing mechanics, alignment, footwork, hip rotation, arm path, accuracy, fundamentals",description:"Teaches proper body alignment before and during the throw. Focus on getting hips, shoulders…"},
+ {name:"Casting Drill",category:"Hitting",url:"https://www.youtube.com/watch?v=K4Gnlpb3gys&t=11",tags:"casting, hand path, inside-out swing, barrel control, mechanics fix, bat path",description:"Drill to fix casting (when the barrel swings away from the body in a wide arc instead of s…"},
+ {name:"Extension Feeling Drill",category:"Hitting",url:"https://youtube.com/shorts/3HSshWm7CpA?si=G2EKW57juSuxDA21",tags:"extension, contact point, bat path, follow through, mechanics, arm extension, hitting feel",description:"Drill to help hitters feel proper extension through the contact zone…"},
+ {name:"Flamingo Pitching Drill",category:"Pitching",url:"https://youtube.com/shorts/EOPHF5LBAXY?si=yBhM5U9g9NOW5eyB",tags:"pitching, drive, leg drive, balance, power, mechanics, push off, rubber",description:"Pitcher balances on her drive leg (flamingo position) before initiating the delivery…"},
+ {name:"Proper Load Technique Drill",category:"Hitting",url:"https://youtube.com/shorts/ZlRj3J2g8qM?si=Qio3Rp6_n92tKzoT",tags:"load, hip coil, weight shift, separation, timing, mechanics, back leg, launch position",description:"Teaches hitters the correct load sequence before the swing — getting the weight shifted ba…"},
+ {name:"Casting Fix Drill",category:"Hitting",url:"https://www.youtube.com/watch?v=EepTj9dptRM",tags:"casting, hand path, inside-out swing, barrel control, mechanics fix, bat path, knob",description:"Drill focused on eliminating casting by training the hands to stay inside the ball and lea…"},
+  {name:"No Consequences",category:"Other",url:"",tags:"ball hawk, aggression, hustle, compete, daily, every practice, confidence, fearless, fun",description:"Points for AGGRESSION AND HUSTLE ONLY — not for the right play. Sprint to every ball…"},
+  {name:"Train the First Step",category:"Fielding",url:"",tags:"first step, aggression, hesitation, ball hawk, reaction, daily, footwork, hustle, compete",description:"Timidity almost always shows up as hesitation on the first step…"},
+  {name:"Line Drive Progression",category:"Fielding",url:"",tags:"line drives, fly balls, aggression, reaction, confidence, hard hit balls, trust, hesitation, pop ups, daily",description:"Builds trust and aggression on hard-hit balls, line drives, and pop flies…"},
+  {name:"Sliding Drill",category:"Baserunning",url:"https://www.youtube.com/watch?v=metAWbWIOH0",tags:"sliding, baserunning, hook slide, pop-up slide, aggression, steal, safety, technique",description:"Teaches proper sliding mechanics — the foundation of aggressive baserunning.\n…"},
+  {name:"Basic Tee Work",category:"Hitting",url:"",tags:"tee work, contact, rotation, fundamentals, daily, swing mechanics, repetition, youth",description:"Simple high-rep tee rotation. Player takes 7–10 full swings off the tee, focusing on clean contact and consistent mechanics, then rotates with the next player.\n\nKeep it moving — the goal is volume and rhythm, not perfection. Coaches give one quick cue per round at most (e.g. 'stay back', 'head down', 'follow through').\n\nProgression:\n\u2022 Start: middle of plate, comfortable height\n\u2022 Move tee inside/outside to work different pitch locations\n\u2022 Move tee high/low to work swing plane\n\u2022 Call a target direction before each swing (pull, middle, opposite field)"},
+  {name:"Basic Infield Practice",category:"Fielding",url:"",tags:"infield, force outs, tag outs, ground balls, progression, fundamentals, game situations, throwing accuracy",description:"Progresses through infield fundamentals from simplest to game-realistic. Run each stage until the group is consistent before advancing.\n\nStage 1 — Force Outs at First:\n\u2022 Coach rolls or hits ground balls to each infield position\n\u2022 Fielder fields and throws to first base only\n\u2022 Focus: clean field, accurate throw, first baseman holds the bag\n\nStage 2 — Force Outs at Second:\n\u2022 Same setup but throw goes to second base\n\u2022 Shortstop or second baseman must cover and catch\n\u2022 Adds: footwork at second, turning a double play read\n\nStage 3 — Tag Outs:\n\u2022 Add baserunners — fielder must decide whether to tag or throw\n\u2022 Mix in slow rollers, hard shots, and pop-ups to keep it realistic\n\u2022 Emphasis: field first, then decide — no rushed throws\n\nCoaching cue: 'Know where you're going before the pitch.'"},
+  {name:"Basic Outfield Practice",category:"Fielding",url:"",tags:"outfield, fly balls, pop ups, drop step, moving left, moving right, moving in, moving back, fundamentals, progression, line drill",description:"Line drill — players stand in a line in the outfield. Coach feeds fly balls in a progressive sequence, cycling through all players before advancing to the next stage.\n\nStage 1 — Pop-Ups Nearby (straight up, comfortable):\n\u2022 Build confidence and footwork under easy balls\n\u2022 Call 'Mine!' and get under it with two hands\n\nStage 2 — Moving Left and Right:\n\u2022 Coach tosses to the player's left, then right\n\u2022 Drop step in the correct direction before moving\n\u2022 No crossing feet — open hips and run\n\nStage 3 — Moving In (shallow):\n\u2022 Short looping fly balls — player charges in aggressively\n\u2022 'When in doubt, come in' — it's easier than going back\n\u2022 Get down on one knee if ball drops short\n\nStage 4 — Moving Back (drop step focus):\n\u2022 Coach hits or throws balls over the player's head\n\u2022 Drop step immediately — turn and RUN, don't backpedal\n\u2022 Player should turn sideways and sprint at an angle\n\nKey cue: 'First step is always a drop step — commit to it before you think.' Do not advance stages until players are consistently executing the footwork."},
+  {name:"Slapper Drill",category:"Hitting",url:"https://www.youtube.com/watch?v=KxiRBWTbuFc",tags:"slapping, slapper, left handed, running, contact, speed, footwork, timing, bunt, hit and run",description:"Drill for developing left-handed slappers — combines footwork, timing, and contact into one fluid motion.\n\nKey mechanics:\n\u2022 Crossover step toward the pitcher as the swing begins\n\u2022 Contact is made while already moving toward first base\n\u2022 Slap down on top of the ball — not a traditional swing\n\u2022 Eyes stay on the ball through contact\n\u2022 Sprint out of the box immediately after contact\n\nProgressions:\n\u2022 Start with footwork only — no ball, just the crossover step and run-through\n\u2022 Add soft toss — focus on timing the step with contact\n\u2022 Off the tee — work placement (slap to third base side)\n\u2022 Live pitching — full speed with full sprint\n\nCoaching cue: 'You're not hitting the ball, you're running through it.' The slap is most effective when the fielder has no time — speed out of the box is everything."},
+  {name:"3 Counterbalance Throwing Drills",category:"Fielding",url:"https://www.youtube.com/watch?v=orelOBAAqjw",tags:"throwing mechanics, arm position, arm strength, velocity, counterbalance, L position, throwing harder, arm path, fundamentals",description:"Three progressive drills using counterbalance principles to fix arm position and generate more velocity.\n\nDrill 1 — Counterbalance Hold:\n\u2022 Player holds glove arm out in front as a counterweight\n\u2022 Forces the throwing arm to stay up and back in proper L position\n\u2022 Feel the balance point before releasing\n\nDrill 2 — Counterbalance Swing Through:\n\u2022 Both arms work together — glove pulls in as throwing arm fires\n\u2022 The glove-side pull creates hip and shoulder rotation\n\u2022 More rotation = more velocity without more arm stress\n\nDrill 3 — Full Throw with Counterbalance:\n\u2022 Apply both principles to a full throw\n\u2022 Focus on explosive hip turn, glove tucking tight to the body\n\u2022 Throwing arm finishes down and across — not slowing early\n\nCoaching cue: 'Pull the glove, don't just throw the ball.' The glove-side is half the throw — players who learn to use it add velocity immediately."},
+  {name:"Scoop, Pinch, Throw",category:"Fielding",url:"",tags:"fielding mechanics, throwing mechanics, transfer, U to L, arm position, ground balls, fundamentals, progression, team drill, line drill",description:"Breaks down the full fielding-to-throw sequence into three isolated stages. Girls form a single vertical line and run through all three stages in order — no skipping ahead. The whole group does each stage together before moving on.\n\nStage 1 — The Scoop (fielding form only):\n\u2022 Coach rolls ground ball to each player in turn\n\u2022 Focus ONLY on getting in front of the ball, bending at the knees, soft hands, and fielding with a proper ramp/scoop\n\u2022 After fielding, the player simply rolls the ball back to the coach — NO throw\n\u2022 Coaching cue: 'Get in front of it. Scoop it, don't stab it.'\n\u2022 Repeat until the whole group is fielding with clean form\n\nStage 2 — The Pinch (scoop + transfer):\n\u2022 Same grounder, same clean scoop\n\u2022 Now players focus on the transfer: after fielding, bring the ball up through the U position into the L (arm up, elbow at shoulder height, forearm up)\n\u2022 Hold the L position for a beat — no throw yet\n\u2022 Coaching cue: 'Scoop it, then show me the L.' Check every player's arm position before moving on\n\nStage 3 — The Throw (full sequence + target):\n\u2022 Full sequence: scoop → pinch into L → make the throw\n\u2022 Set a target (cone, bucket, or mark on the fence) and see who can hit it\n\u2022 The competition makes them focus on accuracy, not just getting the ball there\n\u2022 Coaching cue: 'Scoop. Pinch. Throw at the target.' Say it out loud as a team cue\n\nKey principle: Do NOT move to the next stage until the group is consistent at the current one. The value is in the isolation — each stage earns the next."},
+  {name:"Timing Drill",category:"Baserunning",url:"",tags:"speed, home to first, steal, full circuit, baserunning, assessment, stopwatch, timing, agility, competition",description:"Time every player through three segments. Log results in the Development tab (Home → 1st, Steal 2nd, Full Base Circuit). Run this at the start and end of the season to track improvement.\n\nSetup: One coach with a stopwatch at home plate. One coach at first base. Girls line up at home.\n\nSegment 1 — Home to First:\n\u2022 Player starts in batting stance at home plate\n\u2022 On 'GO!' she sprints through first base — not to it\n\u2022 Time stops when she hits the bag\n\u2022 Cue: 'Run through the bag, not to it. Sprint past.'\n\nSegment 2 — Steal 2nd (1st to 2nd):\n\u2022 Player takes a leadoff at first base\n\u2022 On 'GO!' she breaks for second using a sprinter start\n\u2022 Time stops when she hits the bag\n\u2022 Cue: 'Fast leaving, head down, trust your feet.'\n\nSegment 3 — Full Base Circuit (home to home):\n\u2022 Player starts at home plate\n\u2022 Sprints all four bases, hitting the inside corner of each\n\u2022 Time stops when she touches home\n\u2022 Cue: 'Hit the inside corner of every bag. Don't slow into turns.'\n\nRest 2–3 minutes between each segment. Record all three times per player and log them in the Development tab. Post the results — friendly competition motivates improvement."},
+  {name:"Basic Pitching Progression",category:"Pitching",url:"",tags:"pitching, wrist flicks, W drill, one leg, mechanics, arm circle, drive, progression, fundamentals, warm up, daily",description:"Three-stage pitching warmup and mechanics drill. Run in order every time — each stage earns the next. Great for opening a pitching session or teaching beginners the full motion.\n\nStage 1 — Wrist Flicks:\n\u2022 Pitcher stands close to catcher (10–15 feet), feet planted\n\u2022 Using only wrist snap, flick the ball to the catcher\n\u2022 Fingers on top of the ball, strong snap at release\n\u2022 Focus: feel the release point and spin\n\u2022 Cue: 'Snap it — don't push it.'\n\nStage 2 — W Drill (arm circle):\n\u2022 Pitcher stands at half distance, feet still planted\n\u2022 Arm makes a full W shape — back, up to 12 o'clock, through, and snap\n\u2022 Isolates the full arm circle without footwork\n\u2022 Coach watches for a complete 12 o'clock arm path — no shortcuts\n\u2022 Cue: 'Tall at the top. Don't cut the circle short.'\n\nStage 3 — One Leg (drive + balance):\n\u2022 Pitcher balances on drive leg (flamingo position)\n\u2022 Adds full arm circle and drives off the back leg to deliver\n\u2022 Forces an explosive push and proper weight transfer\n\u2022 No stride foot plant until the arm is committed\n\u2022 Cue: 'Load the leg, then explode. The arm follows the leg.'\n\nOnce all three stages are clean, move to full-speed pitching from the mound. These three stages can also be used mid-session to reset mechanics when a pitcher is struggling."},
+  {name:"Dynamic Warmup — Catcher Focus",category:"Conditioning",url:"https://www.youtube.com/watch?v=AohAR4ZQ6Ho&t=37",tags:"dynamic warmup, catchers, mobility, flexibility, hip opener, squat, conditioning, warmup, daily, pre-practice",description:"Dynamic movement warmup especially beneficial for catchers, who spend extended time in deep squat positions. Run through the full sequence before any throwing or fielding work.\n\nKey movements in the sequence (see video starting at 0:37):\n\u2022 Hip circles and hip openers — loosens the hip flexors critical for catchers\n\u2022 Leg swings (front/back and side to side) — activates hamstrings and groin\n\u2022 Deep squat holds and rock-throughs — preps the catching stance position\n\u2022 Lunge variations with rotation — builds mobility through the thoracic spine\n\u2022 High knees and butt kicks — elevates heart rate\n\u2022 Lateral shuffles and carioca — gets lateral movement muscles firing\n\nEspecially important for catchers because:\n\u2022 Deep squat position compresses the hip joint — need to open it first\n\u2022 Explosive pop-ups from crouch require fully warm glutes and hamstrings\n\u2022 Throwing from the crouch demands full shoulder and thoracic mobility\n\nRun this before every practice for catchers. Other players benefit too — particularly infielders who need lateral hip mobility and outfielders who need hamstring activation."},
+  {name:"Catcher Everyday Drill",category:"Catching",url:"https://www.youtube.com/watch?v=htH5NjUxI2M&t=7",tags:"catcher, daily, warmup, receiving, blocking, pop up throw, footwork, framing, stance, every practice, everydays",description:"Daily warmup sequence for catchers — run this every practice before any game reps. Covers the core catcher skills in a quick, repeatable progression.\n\nSee video for full sequence. Key elements:\n\u2022 Receiving stance and ready position\n\u2022 Glove presentation and framing reps\n\u2022 Short hops — blocking technique and body positioning\n\u2022 Footwork for the pop-up throw to second\n\u2022 Throw-down reps at game speed\n\nRun through the full sequence before every practice. Just like Everydays for infield/outfield, this builds the muscle memory and consistency that makes catchers reliable under pressure.\n\nCue: 'Every rep is a game rep. Move like the runner is going.'"},
+  {name:"Shoulder Drop Fix Drill",category:"Fielding",url:"https://youtu.be/TygeEMUCLwU?t=311",tags:"throwing mechanics, shoulder drop, arm path, elbow, L position, accuracy, velocity, fundamentals",description:"Fixes the most common throwing flaw in youth players — dropping the throwing shoulder, which kills accuracy and velocity.\n\nWhat shoulder drop looks like:\n\u2022 Throwing shoulder dips below the glove shoulder at release\n\u2022 Ball sails high or tails away\n\u2022 Arm drags behind the body\n\nThe fix:\n\u2022 Both shoulders stay level through the throw — think of a flat line from shoulder to shoulder\n\u2022 Glove side elbow pulls DOWN and IN as throwing arm fires (this keeps shoulders level)\n\u2022 Lead shoulder stays closed until hips rotate\n\u2022 Throwing elbow must be at or above shoulder height at release (the L position)\n\nDrill progression:\n\u2022 Mirror check: player watches herself in a mirror or phone camera — throw in slow motion and pause at release\n\u2022 Wall drill: stand close to wall, throw with focus on keeping the shoulder line flat\n\u2022 Partner check: partner watches from behind — calls out each rep as 'level' or 'drop'\n\nCue: 'Keep the shelf flat. Shoulders level, elbow up, glove pulls in.'"},
+];
+const SEED_PLAYERS = [
+  {name:"Luciana Bartolotta", number:"", positions:[], notes:"6th grade. Has anxiety — does better with familiar teammates. Close with Amira Hassan and Amelia Ciarrocchi."},
+  {name:"Kendall Bryant",     number:"", positions:[], notes:"6th grade."},
+  {name:"Harper Carroll",     number:"", positions:[], notes:"4th grade."},
+  {name:"Amelia Ciarrocchi",  number:"", positions:[], notes:"6th grade."},
+  {name:"Avery Colantonio",   number:"", positions:[], notes:"6th grade."},
+  {name:"Ruby Day",           number:"", positions:[], notes:"6th grade. Asthma — be aware."},
+  {name:"Lily Drown",         number:"", positions:[], notes:"7th grade."},
+  {name:"Isabella Erba",      number:"", positions:[], notes:"6th grade."},
+  {name:"Aria Fuss",          number:"", positions:[], notes:"7th grade."},
+  {name:"Callie Guyette",     number:"", positions:[], notes:"5th grade."},
+  {name:"Evaleen Hart",       number:"", positions:[], notes:"7th grade."},
+  {name:"Amira Hassan",       number:"", positions:[], notes:"6th grade. Requests Coach Mike C as mentor — has worked with him for years."},
+  {name:"Kendra Jackson",     number:"", positions:[], notes:"5th grade."},
+  {name:"Megan Seipt",        number:"", positions:[], notes:"6th grade."},
+  {name:"Emily St. Rock",     number:"", positions:[], notes:"7th grade."},
+  {name:"Sawyer Thompson",    number:"", positions:[], notes:"7th grade."},
+  {name:"Bridget Walsh",      number:"", positions:[], notes:"6th grade."},
+];
+const METRIC_TYPES = [
+  { key:"run60",       label:"60yd Dash",       unit:"sec", lowerBetter:true  },
+  { key:"homeToFirst", label:"Home → 1st",       unit:"sec", lowerBetter:true  },
+  { key:"stealSecond", label:"Steal 2nd",         unit:"sec", lowerBetter:true  },
+  { key:"fullBases",   label:"Full Base Circuit", unit:"sec", lowerBetter:true  },
+  { key:"exitVelo",    label:"Exit Velocity",     unit:"mph", lowerBetter:false },
+  { key:"throwSpeed",  label:"Throwing Speed",    unit:"mph", lowerBetter:false },
+  { key:"pitchSpeed",  label:"Pitching Speed",    unit:"mph", lowerBetter:false },
+];
+</script>
+<script>
+// ═══ CONSTANTS ═══════════════════════════════════════════
+const POSITIONS=['P','C','1B','2B','3B','SS','LF','CF','RF','DP','FLEX','EH'];
+const DRILL_CATS=['Hitting','Pitching','Fielding','Catching','Baserunning','Conditioning','Other'];
+const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catching:'#c97af5',Baserunning:'#f5a05b',Conditioning:'#f16b6b',Other:'#7b88a8'};
+const GIST_ID_KEY='sh_gist_id';
+const GH_TOKEN_KEY='sh_gh_token';
+const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[]};
+
+// ═══ STATE ══════════════════════════════════════════════
+let gistId=localStorage.getItem(GIST_ID_KEY)||'';
+let ghToken=localStorage.getItem(GH_TOKEN_KEY)||'';
+let DB=JSON.parse(JSON.stringify(BLANK_DB));
+let currentTab='drills';
+let saveTimer=null;
+
+// ═══ UTILITIES ══════════════════════════════════════════
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function ytId(url){if(!url)return null;const m=url.match(/(?:youtu\.be\/|v=|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null;}
+function fmtTime(h24){if(!h24)return'';const[h,m]=h24.split(':').map(Number);const hh=h%12||12;return`${hh}:${String(m).padStart(2,'0')}${h<12?'am':'pm'}`;}
+function totalMin(plan){return(plan.items||[]).reduce((s,i)=>s+(parseInt(i.duration)||0),0);}
+function getDrill(id){return DB.drills.find(d=>d.id===id);}
+function getPlayer(id){return DB.players.find(p=>p.id===id);}
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);if(lines.length<2)return[];
+  const hdrs=lines[0].split(',').map(h=>h.replace(/"/g,'').trim());
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const vals=[];let cur='',inQ=false;
+    for(const c of line){if(c==='"')inQ=!inQ;else if(c===','&&!inQ){vals.push(cur.trim());cur='';}else cur+=c;}
+    vals.push(cur.trim());
+    const obj={};hdrs.forEach((h,i)=>obj[h]=(vals[i]||'').replace(/^"|"$/g,''));return obj;
+  });
+}
+
+// ═══ GOOGLE SHEETS ══════════════════════════════════════
+async function gistLoad(gid,token){
+  const r=await fetch(`https://api.github.com/gists/${gid}`,{
+    headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json'}
+  });
+  if(r.status===401)throw new Error('Invalid GitHub token — check your Personal Access Token');
+  if(r.status===404)throw new Error('Gist not found — check your Gist ID');
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  const gist=await r.json();
+  const file=gist.files['hamr_hub.json'];
+  if(!file)throw new Error('File hamr_hub.json not found in gist — make sure you named the file exactly hamr_hub.json');
+  let data={};
+  try{data=JSON.parse(file.content||'{}');}catch(e){data={};}
+  const merged=Object.assign({},BLANK_DB,data);
+  if(!merged.drills||merged.drills.length===0){
+    merged.drills=SEED_DRILLS.map(d=>({...d,id:uid()}));
+  } else {
+    const names=new Set(merged.drills.map(d=>d.name));
+    const newD=SEED_DRILLS.filter(d=>!names.has(d.name)).map(d=>({...d,id:uid()}));
+    if(newD.length)merged.drills=[...merged.drills,...newD];
+  }
+  if(!merged.players||merged.players.length===0){
+    merged.players=SEED_PLAYERS.map(p=>({...p,id:uid()}));
+  }
+  if(!merged.playerSkills)merged.playerSkills=[];
+  return merged;
+}
+async function gistSave(gid,token,data){
+  const r=await fetch(`https://api.github.com/gists/${gid}`,{
+    method:'PATCH',
+    headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
+    body:JSON.stringify({files:{'hamr_hub.json':{content:JSON.stringify(data)}}})
+  });
+  if(!r.ok)throw new Error('HTTP '+r.status);
+}
+function setSave(s){
+  const el=document.getElementById('save-status');if(!el)return;
+  if(s==='saving'){el.textContent='Saving…';el.style.color='var(--muted)';}
+  else if(s==='saved'){el.textContent='✓ Saved';el.style.color='var(--green)';}
+  else if(s==='err'){el.textContent='⚠ Save error';el.style.color='var(--red)';}
+  else el.textContent='';
+}
+function scheduleSave(){
+  clearTimeout(saveTimer);setSave('saving');
+  saveTimer=setTimeout(async()=>{
+    try{await gistSave(gistId,ghToken,DB);setSave('saved');setTimeout(()=>setSave(''),2500);}
+    catch(e){setSave('err');console.error('Save failed:',e);}
+  },800);
+}
+async function doRefresh(){
+  const el=document.querySelector('#hdr-right [onclick="doRefresh()"]');
+  if(el)el.textContent='↻…';
+  try{DB=await gistLoad(gistId,ghToken);renderTab();updateCounts();}
+  catch(e){alert('Refresh failed: '+e.message);}
+  if(el)el.textContent='↻';
+}
+function updateCounts(){
+  const el=document.getElementById('hdr-counts');if(!el)return;
+  el.innerHTML=`<span><strong>${DB.players.length}</strong> players</span><span><strong>${DB.drills.length}</strong> drills</span><span><strong>${DB.games.length}</strong> games</span>`;
+}
+
+// ═══ MODAL ══════════════════════════════════════════════
+function showModal(html,wide=false){
+  document.getElementById('modal').innerHTML=`<div class="overlay" onclick="maybeClose(event)"><div class="mbox${wide?' wide':''}" onclick="event.stopPropagation()">${html}</div></div>`;
+}
+function closeModal(){document.getElementById('modal').innerHTML='';}
+function maybeClose(e){if(e.target.classList.contains('overlay'))closeModal();}
+function mhdr(t){return`<div class="mhdr"><h3>${esc(t)}</h3><button class="xbtn" onclick="closeModal()">×</button></div>`;}
+
+// ═══ NAVIGATION ════════════════════════════════════════
+function goTab(btn){
+  const tab=btn.dataset.tab;
+  document.querySelectorAll('#nav button,#mob-nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+  currentTab=tab;
+  document.getElementById('content').scrollTop=0;
+  renderTab();
+}
+function renderTab(){
+  const el=document.getElementById('main');if(!el)return;
+  if(currentTab==='drills')el.innerHTML=renderDrills();
+  else if(currentTab==='roster')el.innerHTML=renderRoster();
+  else if(currentTab==='plans')el.innerHTML=renderPlans();
+  else if(currentTab==='skills')el.innerHTML=renderSkills();
+  else if(currentTab==='dev'){renderDev();return;}
+  else if(currentTab==='lineups')el.innerHTML=renderLineups();
+  else if(currentTab==='stats')el.innerHTML=renderStats();
+}
+
+// ═══ BACKUP / RESTORE ═══════════════════════════════════
+function exportBackup(){
+  const b={_v:2,_label:'HAMR Softball Hub Backup',_date:new Date().toISOString(),
+    players:DB.players,plans:DB.plans,metrics:DB.metrics,games:DB.games,
+    gcStats:DB.gcStats,playerSkills:DB.playerSkills||[]};
+  const blob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`HamrHub_Backup_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+function importBackup(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const b=JSON.parse(ev.target.result);
+      if(b._label!=='HAMR Softball Hub Backup')throw new Error('Not a valid backup');
+      Object.assign(DB,{players:b.players||DB.players,plans:b.plans||DB.plans,
+        metrics:b.metrics||DB.metrics,games:b.games||DB.games,
+        gcStats:b.gcStats||DB.gcStats,playerSkills:b.playerSkills||[]});
+      scheduleSave();renderTab();updateCounts();closeModal();
+      setSave('saved');setTimeout(()=>setSave(''),2000);
+    }catch(e){alert('Could not restore: '+e.message);}
+  };
+  reader.readAsText(file);input.value='';
+}
+
+// ═══ SETTINGS ════════════════════════════════════════════
+function showSettings(){
+  showModal(`${mhdr('⚙ Settings')}
+    <div class="col">
+      <div class="surface tip">
+        <strong style="color:var(--gold)">📤 To sync with other devices / coaches:</strong><br>
+        Send them this HTML file. They open it → enter the same Bin ID and API Key → all share live data.
+      </div>
+      <div><div class="lbl">GitHub Gist ID</div><input value="${esc(gistId)}" readonly style="font-family:monospace;font-size:12px"/></div>
+      <div><div class="lbl">GitHub Access Token</div><input value="${esc(ghToken)}" readonly style="font-family:monospace;font-size:10px"/></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px">
+        <button class="btn btn-green btn-sm" onclick="exportBackup()">💾 Backup Data</button>
+        <label class="btn btn-dim btn-sm">📂 Restore Backup<input type="file" accept=".json" class="hidden" onchange="importBackup(this)"></label>
+        <button class="btn btn-red btn-sm" onclick="if(confirm('Disconnect and reload?')){localStorage.removeItem('${GIST_ID_KEY}');localStorage.removeItem('${GH_TOKEN_KEY}');location.reload();}">Disconnect</button>
+      </div>
+      <button class="btn btn-gold" onclick="closeModal()">Done</button>
+    </div>`);
+}
+
+// ═══ SETUP FLOW ══════════════════════════════════════════
+let _step=1;
+function renderSetup(){
+  const dots=document.getElementById('dots');
+  dots.innerHTML=[1,2,3].map(i=>`<div class="dot${i===_step?' on':''}"></div>`).join('');
+  const el=document.getElementById('setup-body');
+  if(_step===1){
+    el.innerHTML=`<div style="font-weight:700;font-size:16px;margin-bottom:14px">Step 1 — Create a GitHub Gist</div>
+      <ol style="padding-left:20px;color:var(--muted);line-height:2.8">
+        <li>Go to <a href="https://github.com" target="_blank" style="color:var(--gold)">github.com</a> → sign in or create a free account</li>
+        <li>Go to <a href="https://gist.github.com" target="_blank" style="color:var(--gold)">gist.github.com</a></li>
+        <li>Set the filename to exactly: <span style="font-family:monospace;background:var(--navy);color:var(--green);padding:2px 8px;border-radius:4px">hamr_hub.json</span></li>
+        <li>In the content area type: <span style="font-family:monospace;background:var(--navy);color:var(--green);padding:2px 8px;border-radius:4px">{}</span></li>
+        <li>Click <strong style="color:var(--text)">Create secret gist</strong></li>
+        <li>Copy the <strong style="color:var(--text)">Gist ID</strong> from the URL — it's the long code at the very end of the address bar</li>
+      </ol>
+      <div style="margin-top:20px"><button class="btn btn-gold" onclick="_step=2;renderSetup()">Next →</button></div>`;
+  } else if(_step===2){
+    el.innerHTML=`<div style="font-weight:700;font-size:16px;margin-bottom:14px">Step 2 — Create a GitHub Token</div>
+      <ol style="padding-left:20px;color:var(--muted);line-height:2.8">
+        <li>Go to <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--gold)">github.com/settings/tokens</a></li>
+        <li>Click <strong style="color:var(--text)">Generate new token → Generate new token (classic)</strong></li>
+        <li>Name it <strong style="color:var(--text)">HAMR Softball Hub</strong></li>
+        <li>Check the <strong style="color:var(--text)">gist</strong> scope (just that one)</li>
+        <li>Click <strong style="color:var(--text)">Generate token</strong> → copy it immediately (you won't see it again)</li>
+      </ol>
+      <div style="margin-top:20px;display:flex;gap:10px">
+        <button class="btn btn-dim" onclick="_step=1;renderSetup()">← Back</button>
+        <button class="btn btn-gold" onclick="_step=3;renderSetup()">Next →</button>
+      </div>`;
+  } else {
+    el.innerHTML=`<div style="font-weight:700;font-size:16px;margin-bottom:14px">Step 3 — Connect</div>
+      <p class="tip" style="margin-bottom:16px">Your data is saved privately to your GitHub Gist. Share your Gist ID and token with coaches so they can sync too.</p>
+      <div style="margin-bottom:12px"><div class="lbl">Gist ID (from the URL)</div>
+        <input id="gist-inp" placeholder="abc123def456..." value="${esc(gistId)}" style="margin-bottom:0;font-family:monospace"/>
+      </div>
+      <div style="margin-bottom:12px"><div class="lbl">GitHub Personal Access Token</div>
+        <input id="token-inp" type="password" placeholder="ghp_..." value="${esc(ghToken)}" style="margin-bottom:0;font-family:monospace"/>
+      </div>
+      <div id="conn-err" class="hidden" style="color:var(--red);font-size:12px;background:rgba(241,107,107,.1);border-radius:8px;padding:10px;margin-bottom:10px;line-height:1.6"></div>
+      <div style="margin-top:16px;display:flex;gap:10px">
+        <button class="btn btn-dim" onclick="_step=2;renderSetup()">← Back</button>
+        <button class="btn btn-gold" id="conn-btn" onclick="doConnect()">🔌 Connect & Launch</button>
+      </div>`;
+  }
+}
+function launchApp(){
+  document.getElementById('setup').style.display='none';
+  document.getElementById('app').classList.remove('hidden');
+  updateCounts();renderTab();
+}
+async function doConnect(){
+  const gid=(document.getElementById('gist-inp')?.value||'').trim();
+  const tok=(document.getElementById('token-inp')?.value||'').trim();
+  if(!gid||!tok){document.getElementById('conn-err').textContent='Please enter both fields.';document.getElementById('conn-err').classList.remove('hidden');return;}
+  const btn=document.getElementById('conn-btn');
+  const err=document.getElementById('conn-err');
+  btn.textContent='Connecting…';btn.disabled=true;err.classList.add('hidden');
+  try{
+    DB=await gistLoad(gid,tok);
+    gistId=gid;ghToken=tok;
+    localStorage.setItem(GIST_ID_KEY,gid);localStorage.setItem(GH_TOKEN_KEY,tok);
+    document.getElementById('setup').style.display='none';
+    document.getElementById('app').classList.remove('hidden');
+    updateCounts();renderTab();
+  }catch(e){
+    err.innerHTML='Could not connect: '+esc(e.message);
+    err.classList.remove('hidden');
+    btn.textContent='🔌 Connect & Launch';btn.disabled=false;
+  }
+}
+// ═══ ROSTER ══════════════════════════════════════════════
+function renderRoster(){
+  const cards=DB.players.length===0?'<div class="empty">No players yet — add your roster to get started.</div>':
+    DB.players.map(p=>{
+      const posBadges=(p.positions||[]).map(pos=>`<span class="badge" style="background:var(--green)22;color:var(--green);border:1px solid var(--green)44">${pos}</span>`).join('');
+      return `<div class="card">
+        <div class="row" style="margin-bottom:10px;align-items:flex-start;gap:10px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:900;color:var(--gold);line-height:1;min-width:52px">#${esc(p.number||'—')}</div>
+          <div class="f1">
+            <div style="font-weight:700;font-size:15px;margin-bottom:5px">${esc(p.name)}</div>
+            <div class="row" style="gap:4px">${posBadges||'<span style="color:var(--muted);font-size:11px">No positions set</span>'}</div>
+          </div>
+        </div>
+        ${p.notes?`<div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-style:italic;line-height:1.5">${esc(p.notes)}</div>`:''}
+        <div class="row" style="gap:6px">
+          <button class="btn btn-dim btn-sm" onclick="editPlayer('${p.id}')">Edit</button>
+          <button class="btn btn-red btn-sm" onclick="deletePlayer('${p.id}')">Remove</button>
+        </div>
+      </div>`;
+    }).join('');
+  return `<div class="row" style="margin-bottom:18px">
+    <h2 class="st">👥 Roster</h2><div class="f1"></div>
+    <button class="btn btn-dim btn-sm" onclick="showCSVImport()">📥 Import CSV</button>
+    <button class="btn btn-gold" onclick="editPlayer(null)">+ Add Player</button>
+  </div><div class="grid-auto">${cards}</div>`;
+}
+function editPlayer(id){
+  const p=id?DB.players.find(x=>x.id===id):{id:uid(),name:'',number:'',positions:[],notes:''};
+  const posBtns=POSITIONS.map(pos=>`<button type="button" class="tog${(p.positions||[]).includes(pos)?' on':''}" onclick="this.classList.toggle('on')">${pos}</button>`).join('');
+  showModal(`${mhdr(id?'Edit Player':'Add Player')}
+    <div class="col">
+      <div><div class="lbl">Full Name</div><input id="pn" value="${esc(p.name)}" placeholder="First Last"/></div>
+      <div><div class="lbl">Jersey #</div><input id="pnum" value="${esc(p.number)}" placeholder="00" style="max-width:100px"/></div>
+      <div><div class="lbl">Positions</div><div class="row" style="margin-top:5px;gap:5px" id="pbtn">${posBtns}</div></div>
+      <div><div class="lbl">Notes</div><textarea id="pnotes" rows="2" placeholder="Strengths, development notes, anything coaches should know…">${esc(p.notes)}</textarea></div>
+      <div class="row">
+        <button class="btn btn-gold" onclick="savePlayer('${id||p.id}',${!id})">Save Player</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`);
+}
+function savePlayer(id,isNew){
+  const name=document.getElementById('pn').value.trim();if(!name)return;
+  const positions=[...document.querySelectorAll('#pbtn .tog.on')].map(b=>b.textContent);
+  const pl={id,name,number:document.getElementById('pnum').value.trim(),positions,notes:document.getElementById('pnotes').value.trim()};
+  if(isNew)DB.players.push(pl);else{const i=DB.players.findIndex(p=>p.id===id);if(i>=0)DB.players[i]=pl;}
+  closeModal();scheduleSave();renderTab();updateCounts();
+}
+function deletePlayer(id){
+  DB.players=DB.players.filter(p=>p.id!==id);scheduleSave();renderTab();updateCounts();
+}
+function showCSVImport(){
+  showModal(`${mhdr('📥 Import GameChanger Roster CSV')}
+    <div class="col">
+      <div class="surface tip">
+        <strong style="color:var(--gold)">How to export from GameChanger:</strong><br>
+        Open your team → Roster → tap the share/export icon → Export as CSV
+      </div>
+      <div><div class="lbl">Choose CSV File</div><input type="file" accept=".csv,.txt" onchange="handleRosterCSV(this)"/></div>
+      <div id="csv-preview"></div>
+    </div>`);
+}
+function handleRosterCSV(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const rows=parseCSV(ev.target.result);
+    const parsed=rows.map(row=>{
+      const fn=row['Player First Name']||row['First Name']||row['FirstName']||'';
+      const ln=row['Player Last Name']||row['Last Name']||row['LastName']||'';
+      const name=(fn&&ln)?`${fn} ${ln}`.trim():(row['Player Name']||row['Name']||row[Object.keys(row)[0]]||'').trim();
+      const num=(row['#']||row['Jersey']||row['Jersey #']||row['Number']||'').trim();
+      const pos=(row['Position']||row['Positions']||'').split(/[,/]/).map(p=>p.trim().toUpperCase()).filter(p=>POSITIONS.includes(p));
+      return{id:uid(),name,number:num,positions:pos,notes:''};
+    }).filter(p=>p.name);
+    const existing=new Set(DB.players.map(p=>p.name.toLowerCase()));
+    const newP=parsed.filter(p=>!existing.has(p.name.toLowerCase()));
+    document.getElementById('csv-preview').innerHTML=`
+      <div style="color:var(--green);font-weight:700;margin-bottom:8px">Found ${parsed.length} players — ${newP.length} new</div>
+      <div style="max-height:200px;overflow-y:auto;margin-bottom:10px">
+        ${parsed.map(p=>{const dup=existing.has(p.name.toLowerCase());return`<div style="display:flex;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);opacity:${dup?'.4':'1'};font-size:13px">
+          <span class="f1" style="font-weight:600">${esc(p.name)}</span>
+          ${p.number?`<span style="color:var(--muted)">#${esc(p.number)}</span>`:''}
+          ${dup?'<span style="color:var(--red);font-size:11px">duplicate</span>':''}
+        </div>`;}).join('')}
+      </div>
+      <div class="row">
+        <button class="btn btn-gold" onclick='confirmCSV(${JSON.stringify(newP).replace(/'/g,"&#39;")})'>✓ Import ${newP.length} Players</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>`;
+  };
+  reader.readAsText(file);input.value='';
+}
+function confirmCSV(players){
+  DB.players=[...DB.players,...players];closeModal();scheduleSave();renderTab();updateCounts();
+}
+
+// ═══ DRILLS ══════════════════════════════════════════════
+let DF={cat:'All',name:'',tag:''};
+function renderDrills(){
+  const tagCounts={};
+  DB.drills.forEach(d=>(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean).forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
+  const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,18).map(([t])=>t);
+  const filtered=DB.drills.filter(d=>{
+    if(DF.cat!=='All'&&d.category!==DF.cat)return false;
+    if(DF.name){const q=DF.name.toLowerCase();if(!d.name.toLowerCase().includes(q)&&!(d.tags||'').toLowerCase().includes(q))return false;}
+    if(DF.tag){const terms=DF.tag.toLowerCase().split(' ').filter(Boolean);const hay=(d.name+' '+(d.tags||'')+' '+(d.description||'')).toLowerCase();if(!terms.every(t=>hay.includes(t)))return false;}
+    return true;
+  });
+  const catBtns=['All',...DRILL_CATS].map(c=>`<button class="tog${DF.cat===c?' on':''}" onclick="setDCat('${c}')">${c}</button>`).join('');
+  const tagPills=topTags.map(t=>`<span onclick="setDTag('${esc(t)}')" class="badge" style="cursor:pointer;background:${DF.tag===t?'var(--gold)22':'var(--dim)'};color:${DF.tag===t?'var(--gold)':'var(--muted)'};border:1px solid ${DF.tag===t?'var(--gold)':'var(--border)'}">${esc(t)}</span>`).join('');
+  const cards=filtered.length===0?`<div class="empty" style="grid-column:1/-1">No drills match. <span style="color:var(--gold);cursor:pointer" onclick="clearDF()">Clear filters</span></div>`:
+    filtered.map(d=>{
+      const cc=CAT_COLOR[d.category]||'#7b88a8';
+      const vid=ytId(d.url);
+      const tags=(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+      return `<div class="card drill-card" style="border-top-color:${cc}" onclick="viewDrill('${d.id}')">
+        <div class="row" style="margin-bottom:6px;align-items:flex-start">
+          <div class="f1">
+            <div style="font-weight:700;font-size:14px;margin-bottom:5px">${esc(d.name)}</div>
+            <span class="badge" style="background:${cc}22;color:${cc};border:1px solid ${cc}55">${d.category}</span>
+          </div>
+          <span style="font-size:18px;opacity:.8">${vid?'▶️':d.url?'🔗':'📋'}</span>
+        </div>
+        <div class="drill-desc">${esc(d.description||'No description.')}</div>
+        <div class="row" style="margin-top:7px;gap:3px;flex-wrap:wrap">
+          ${tags.slice(0,4).map(t=>`<span class="badge" style="background:var(--dim);color:var(--muted);font-size:10px">${esc(t)}</span>`).join('')}
+          ${tags.length>4?`<span class="badge" style="background:var(--dim);color:var(--muted);font-size:10px">+${tags.length-4}</span>`:''}
+        </div>
+        <div class="row" style="margin-top:12px;gap:6px" onclick="event.stopPropagation()">
+          <button class="btn btn-dim btn-sm" onclick="editDrill('${d.id}')">Edit</button>
+          <button class="btn btn-red btn-sm" onclick="deleteDrill('${d.id}')">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  return `<div class="row" style="margin-bottom:16px">
+    <h2 class="st">📚 Drill Library</h2><div class="f1"></div>
+    <span class="badge" style="background:var(--gold)22;color:var(--gold);border:1px solid var(--gold)44">${DB.drills.length} drills</span>
+    <button class="btn btn-gold" onclick="editDrill(null)">+ Add Drill</button>
+  </div>
+  <div class="surface" style="margin-bottom:14px">
+    <div class="row" style="gap:10px;margin-bottom:10px">
+      <div class="f1"><div class="lbl">Search by Name / Skill</div><input value="${esc(DF.name)}" placeholder="e.g. casting, drop step, Everydays…" oninput="DF.name=this.value;renderDrillResults()"/></div>
+    </div>
+    <div class="lbl" style="margin-bottom:6px">Category</div>
+    <div class="row" style="gap:5px;flex-wrap:wrap;margin-bottom:10px">${catBtns}</div>
+    <div class="lbl" style="margin-bottom:5px">Quick Skills</div>
+    <div class="row" style="gap:4px;flex-wrap:wrap">${tagPills}</div>
+  </div>
+  <div id="drill-count" style="color:var(--muted);font-size:12px;margin-bottom:10px">Showing <strong style="color:var(--text)">${filtered.length}</strong> of ${DB.drills.length}${(DF.name||DF.tag||DF.cat!=='All')?` — <span style="color:var(--gold);cursor:pointer" onclick="clearDF()">clear filters</span>`:''}</div>
+  <div id="drill-results" class="grid-auto">${cards}</div>`;
+}
+function renderDrillResults(){
+  // Only re-render the cards and count, preserving the search input focus
+  const tagCounts={};
+  DB.drills.forEach(d=>(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean).forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
+  const filtered=DB.drills.filter(d=>{
+    if(DF.cat!=='All'&&d.category!==DF.cat)return false;
+    if(DF.name){const q=DF.name.toLowerCase();if(!d.name.toLowerCase().includes(q)&&!(d.tags||'').toLowerCase().includes(q))return false;}
+    if(DF.tag){const terms=DF.tag.toLowerCase().split(' ').filter(Boolean);const hay=(d.name+' '+(d.tags||'')+' '+(d.description||'')).toLowerCase();if(!terms.every(t=>hay.includes(t)))return false;}
+    return true;
+  });
+  const cards=filtered.length===0?`<div class="empty" style="grid-column:1/-1">No drills match. <span style="color:var(--gold);cursor:pointer" onclick="clearDF()">Clear filters</span></div>`:
+    filtered.map(d=>{
+      const cc=CAT_COLOR[d.category]||'#7b88a8';
+      const vid=ytId(d.url);
+      const tags=(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean);
+      return `<div class="card drill-card" style="border-top-color:${cc}" onclick="viewDrill('${d.id}')">
+        <div class="row" style="margin-bottom:6px;align-items:flex-start">
+          <div class="f1">
+            <div style="font-weight:700;font-size:14px;margin-bottom:5px">${esc(d.name)}</div>
+            <span class="badge" style="background:${cc}22;color:${cc};border:1px solid ${cc}55">${d.category}</span>
+          </div>
+          <span style="font-size:18px;opacity:.8">${vid?'▶️':d.url?'🔗':'📋'}</span>
+        </div>
+        <div class="drill-desc">${esc(d.description||'No description.')}</div>
+        <div class="row" style="margin-top:7px;gap:3px;flex-wrap:wrap">
+          ${tags.slice(0,4).map(t=>`<span class="badge" style="background:var(--dim);color:var(--muted);font-size:10px">${esc(t)}</span>`).join('')}
+          ${tags.length>4?`<span class="badge" style="background:var(--dim);color:var(--muted);font-size:10px">+${tags.length-4}</span>`:''}
+        </div>
+        <div class="row" style="margin-top:12px;gap:6px" onclick="event.stopPropagation()">
+          <button class="btn btn-dim btn-sm" onclick="editDrill('${d.id}')">Edit</button>
+          <button class="btn btn-red btn-sm" onclick="deleteDrill('${d.id}')">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+  const countEl=document.getElementById('drill-count');
+  const resultsEl=document.getElementById('drill-results');
+  if(countEl) countEl.innerHTML=`Showing <strong style="color:var(--text)">${filtered.length}</strong> of ${DB.drills.length}${(DF.name||DF.tag||DF.cat!=='All')?' — <span style="color:var(--gold);cursor:pointer" onclick="clearDF()">clear filters</span>':''}`;
+  if(resultsEl) resultsEl.innerHTML=cards;
+}
+function setDCat(c){DF.cat=c;renderTab();}
+function setDTag(t){DF.tag=DF.tag===t?'':t;renderTab();}
+function clearDF(){DF={cat:'All',name:'',tag:''};renderTab();}
+
+function viewDrill(id){
+  const d=DB.drills.find(x=>x.id===id);if(!d)return;
+  const cc=CAT_COLOR[d.category]||'#7b88a8';
+  const vid=ytId(d.url);
+  showModal(`${mhdr(d.name)}
+    <span class="badge" style="background:${cc}22;color:${cc};border:1px solid ${cc}55;margin-bottom:14px;display:inline-block">${d.category}</span>
+    ${vid?`<a href="${esc(d.url)}" target="_blank" style="display:block;margin:10px 0;border-radius:10px;overflow:hidden;position:relative">
+      <img src="https://img.youtube.com/vi/${vid}/hqdefault.jpg" style="width:100%;display:block" alt="thumbnail"/>
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">
+        <div style="width:60px;height:60px;background:#f00;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:26px">▶</div>
+      </div>
+      <div style="position:absolute;bottom:10px;left:0;right:0;text-align:center;color:#fff;font-size:12px;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.8)">Tap to watch on YouTube</div>
+    </a>`:''}
+    ${d.url&&!vid?`<div style="margin:10px 0"><a href="${esc(d.url)}" target="_blank">🔗 Open Resource Link</a></div>`:''}
+    ${d.description?`<div style="font-size:13px;line-height:1.8;white-space:pre-wrap;margin:12px 0;color:var(--text)">${esc(d.description)}</div>`:''}
+    ${d.tags?`<div style="margin-top:12px"><div class="lbl">Skills &amp; Tags</div><div class="row" style="gap:4px;margin-top:5px;flex-wrap:wrap">${d.tags.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="badge" style="background:var(--gold)22;color:var(--gold);border:1px solid var(--gold)44">${esc(t)}</span>`).join('')}</div></div>`:''}
+    <div class="row" style="margin-top:16px;gap:8px">
+      <button class="btn btn-gold" onclick="closeModal();editDrill('${id}')">Edit Drill</button>
+      <button class="btn btn-dim" onclick="closeModal()">Close</button>
+    </div>`,true);
+}
+function editDrill(id){
+  const d=id?DB.drills.find(x=>x.id===id):{id:uid(),name:'',category:'Fielding',url:'',description:'',tags:''};
+  const catOpts=DRILL_CATS.map(c=>`<option${d.category===c?' selected':''}>${c}</option>`).join('');
+  showModal(`${mhdr(id?'Edit Drill':'New Drill')}
+    <div class="col">
+      <div><div class="lbl">Drill Name</div><input id="dn" value="${esc(d.name)}" placeholder="Drill name"/></div>
+      <div><div class="lbl">Category</div><select id="dc">${catOpts}</select></div>
+      <div><div class="lbl">URL (YouTube or link)</div><input id="du" value="${esc(d.url||'')}" placeholder="https://youtube.com/watch?v=…"/></div>
+      <div><div class="lbl">Description / Coaching Cues</div><textarea id="dd" rows="5" placeholder="Setup, progressions, coaching cues…">${esc(d.description||'')}</textarea></div>
+      <div><div class="lbl">Skills &amp; Tags (comma-separated)</div><input id="dt" value="${esc(d.tags||'')}" placeholder="footwork, casting, drop step, daily…"/></div>
+      <div class="row">
+        <button class="btn btn-gold" onclick="saveDrill('${id||d.id}',${!id})">Save Drill</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`,true);
+}
+function saveDrill(id,isNew){
+  const name=document.getElementById('dn').value.trim();if(!name)return;
+  const drill={id,name,category:document.getElementById('dc').value,url:document.getElementById('du').value.trim(),description:document.getElementById('dd').value.trim(),tags:document.getElementById('dt').value.trim()};
+  if(isNew)DB.drills.push(drill);else{const i=DB.drills.findIndex(d=>d.id===id);if(i>=0)DB.drills[i]=drill;}
+  closeModal();scheduleSave();renderTab();updateCounts();
+}
+function deleteDrill(id){
+  DB.drills=DB.drills.filter(d=>d.id!==id);scheduleSave();renderTab();updateCounts();
+}
+// ═══ PRACTICE PLANS ══════════════════════════════════════
+let EP=null; // editing plan
+
+function renderPlans(){
+  const sorted=[...DB.plans].sort((a,b)=>b.date.localeCompare(a.date));
+  const rows=sorted.length===0?'<div class="empty">No practice plans yet.</div>':
+    sorted.map(p=>{
+      const tot=totalMin(p);
+      return `<div class="card" style="margin-bottom:10px">
+        <div class="row" style="gap:10px">
+          <div class="f1">
+            <div style="font-weight:700;font-size:15px;margin-bottom:6px">${esc(p.title||'Untitled Plan')}</div>
+            <div class="row" style="gap:5px">
+              <span class="badge" style="background:var(--dim);color:var(--muted)">${esc(p.date)}</span>
+              ${p.startTime?`<span class="badge" style="background:var(--green)22;color:var(--green)">${fmtTime(p.startTime)}${p.endTime?' – '+fmtTime(p.endTime):''}</span>`:''}
+              <span class="badge" style="background:var(--dim);color:var(--muted)">${(p.items||[]).length} activities</span>
+              ${tot?`<span class="badge" style="background:var(--blue)22;color:var(--blue)">${tot} min</span>`:''}
+            </div>
+          </div>
+          <div class="row" style="gap:5px">
+            <button class="btn btn-blue btn-sm" onclick="viewPlan('${p.id}')">View</button>
+            <button class="btn btn-dim btn-sm" onclick="openPlanEdit('${p.id}')">Edit</button>
+            <button class="btn btn-dim btn-sm" onclick="dupPlan('${p.id}')">⧉</button>
+            <button class="btn btn-red btn-sm" onclick="delPlan('${p.id}')">✕</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  return `<div class="row" style="margin-bottom:18px"><h2 class="st">📋 Practice Plans</h2><div class="f1"></div><button class="btn btn-gold" onclick="openNewPlan()">+ New Plan</button></div>${rows}`;
+}
+function openNewPlan(){EP={id:uid(),title:'',date:new Date().toISOString().slice(0,10),startTime:'',endTime:'',notes:'',setupTasks:[],items:[]};showPlanEditor(true);}
+function openPlanEdit(id){EP=JSON.parse(JSON.stringify(DB.plans.find(p=>p.id===id)));if(!EP.setupTasks)EP.setupTasks=[];showPlanEditor(false);}
+function dupPlan(id){
+  const src=DB.plans.find(p=>p.id===id);
+  const c=JSON.parse(JSON.stringify(src));
+  c.id=uid();c.title=(c.title||'Untitled')+' (copy)';c.date=new Date().toISOString().slice(0,10);
+  (c.items||[]).forEach(i=>i.id=uid());
+  DB.plans.push(c);scheduleSave();renderTab();
+}
+function delPlan(id){DB.plans=DB.plans.filter(p=>p.id!==id);scheduleSave();renderTab();}
+
+function calcTS(){
+  const ts={};
+  if(!EP||!EP.startTime)return ts;
+  const[sh,sm]=EP.startTime.split(':').map(Number);let mins=sh*60+sm;const seen=new Set();
+  (EP.items||[]).forEach(item=>{
+    const key=item.type==='station'?item.blockId:item.id;
+    if(item.type==='station'&&seen.has(item.blockId))return;
+    if(item.type==='station')seen.add(item.blockId);
+    const dur=parseInt(item.duration)||0;
+    const h=Math.floor(mins/60)%12||12,mn=String(mins%60).padStart(2,'0'),ap=mins<720?'am':'pm';
+    const em=mins+dur,eh=Math.floor(em/60)%12||12,emn=String(em%60).padStart(2,'0'),eap=em<720?'am':'pm';
+    ts[key]=dur>0?`${h}:${mn}${ap} – ${eh}:${emn}${eap}`:`${h}:${mn}${ap}`;
+    mins+=dur;
+  });
+  return ts;
+}
+
+function showPlanEditor(isNew){
+  if(!EP)return;
+  const ts=calcTS();
+  // Build items HTML
+  const seen=new Set();let ti=0;
+  const itemsHtml=(EP.items||[]).map(item=>{
+    if(item.type==='station'){
+      if(seen.has(item.blockId))return'';seen.add(item.blockId);
+      const sts=EP.items.filter(i=>i.blockId===item.blockId);
+      const tstr=ts[item.blockId]?`<span style="font-size:11px;color:var(--green);font-weight:700;background:var(--green)18;border:1px solid var(--green)44;border-radius:10px;padding:2px 7px">⏱ ${ts[item.blockId]}</span>`:'';
+      const scols=sts.map((st,si)=>{
+        const d=st.drillId?getDrill(st.drillId):null;
+        const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+        const dOpts=DRILL_CATS.map(cat=>`<optgroup label="${cat}">${DB.drills.filter(x=>x.category===cat).map(x=>`<option value="${x.id}"${st.drillId===x.id?' selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
+        return `<div class="scell">
+          <input value="${esc(st.stationLabel||'Station '+(si+1))}" style="font-weight:800;color:var(--blue);font-size:12px;background:transparent;border:none;padding:0;width:100%;margin-bottom:6px" onchange="updPI('${st.id}','stationLabel',this.value)"/>
+          <div class="lbl">Drill</div>
+          <select style="width:100%;font-size:12px;margin-bottom:6px" onchange="updPI('${st.id}','drillId',this.value||null)"><option value="">— select —</option>${dOpts}</select>
+          ${d?`<span class="badge" style="background:${cc}22;color:${cc};font-size:10px;margin-bottom:6px;display:inline-block">${d.category}</span>`:''}
+          <div class="row" style="gap:6px;margin-top:4px">
+            <div style="width:65px"><div class="lbl">Min</div><input value="${esc(st.duration)}" placeholder="15" onchange="updPI('${st.id}','duration',this.value)"/></div>
+            <div class="f1"><div class="lbl">Coach</div><input value="${esc(st.coach||'')}" placeholder="Coach…" onchange="updPI('${st.id}','coach',this.value)"/></div>
+          </div>
+          <div style="margin-top:6px"><div class="lbl">Notes</div><input value="${esc(st.notes)}" placeholder="Focus…" onchange="updPI('${st.id}','notes',this.value)"/></div>
+          <button class="btn btn-red btn-xs" style="margin-top:8px" onclick="rmPI('${st.id}')">Remove station</button>
+        </div>`;
+      }).join('');
+      return `<div class="sblock">
+        <div class="row" style="margin-bottom:10px;gap:6px">
+          <span style="background:var(--blue);color:#fff;border-radius:5px;padding:2px 10px;font-size:11px;font-weight:800">STATIONS</span>
+          <span style="font-size:11px;color:var(--muted)">simultaneous</span>
+          ${tstr}
+          <div class="f1"></div>
+          <button class="btn btn-dim btn-xs" onclick="mvBlk('${item.blockId}',-1)">↑</button>
+          <button class="btn btn-dim btn-xs" onclick="mvBlk('${item.blockId}',1)">↓</button>
+          <button class="btn btn-dim btn-xs" onclick="addSt('${item.blockId}')">+ Station</button>
+          <button class="btn btn-red btn-xs" onclick="rmBlk('${item.blockId}')">✕ Block</button>
+        </div>
+        <div class="sgrid" style="grid-template-columns:repeat(${Math.min(sts.length,3)},1fr)">${scols}</div>
+      </div>`;
+    } else {
+      ti++;
+      const d=item.drillId?getDrill(item.drillId):null;
+      const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+      const tstr=ts[item.id]?`<span style="font-size:11px;color:var(--green);font-weight:700;background:var(--green)18;border:1px solid var(--green)44;border-radius:10px;padding:2px 7px">⏱ ${ts[item.id]}</span>`:'';
+      return `<div class="plan-item">
+        <div class="row" style="margin-bottom:8px;gap:6px">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold);line-height:1;min-width:24px">${ti}.</div>
+          ${d?`<div style="font-weight:600;font-size:13px;f1:1;min-width:0">${esc(d.name)} <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span></div>`:
+          `<input value="${esc(item.customName||'')}" placeholder="Activity name" style="flex:1;font-size:13px" onchange="updPI('${item.id}','customName',this.value)"/>`}
+          ${tstr}
+          <div class="f1"></div>
+          <button class="btn btn-dim btn-xs" onclick="mvPI('${item.id}',-1)">↑</button>
+          <button class="btn btn-dim btn-xs" onclick="mvPI('${item.id}',1)">↓</button>
+          <button class="btn btn-red btn-xs" onclick="rmPI('${item.id}')">✕</button>
+        </div>
+        <div class="row" style="gap:8px">
+          <div style="width:95px"><div class="lbl">Min</div><input value="${esc(item.duration)}" placeholder="15" onchange="updPI('${item.id}','duration',this.value)"/></div>
+          <div style="width:140px"><div class="lbl">Coach</div><input value="${esc(item.coach||'')}" placeholder="Coach…" onchange="updPI('${item.id}','coach',this.value)"/></div>
+          <div class="f1"><div class="lbl">Notes</div><input value="${esc(item.notes)}" placeholder="Focus points for today…" onchange="updPI('${item.id}','notes',this.value)"/></div>
+        </div>
+      </div>`;
+    }
+  }).join('');
+
+  // Drill picker
+  const picker=`<div class="surface" style="margin-bottom:12px">
+    <div class="lbl" style="margin-bottom:6px">Search &amp; Add Drills</div>
+    <input id="dpick" placeholder="Type name or skill (e.g. casting, footwork, Everydays)…" oninput="rDPick()"/>
+    <div class="row" style="gap:4px;margin:8px 0;flex-wrap:wrap">${DRILL_CATS.map(c=>`<button class="tog btn-xs" id="dp-${c}" onclick="setDP('${c}')">${c}</button>`).join('')}</div>
+    <div id="dp-res" style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:5px;margin-top:4px"></div>
+  </div>`;
+
+  // Setup tasks
+  const setupHtml=`<div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+    <div class="row" style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:14px">🔧 Pre-Practice Setup</div>
+      <div class="f1"></div>
+      <button class="btn btn-dim btn-xs" onclick="addSetupTask()">+ Task</button>
+    </div>
+    ${(EP.setupTasks||[]).length===0?'<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px">No setup tasks yet.</div>':''}
+    <div id="setup-tasks">
+      ${(EP.setupTasks||[]).map((t,i)=>`<div style="display:flex;gap:8px;margin-bottom:7px;align-items:center">
+        <div style="color:var(--muted);font-weight:700;min-width:18px;font-size:12px">${i+1}.</div>
+        <input class="f1" value="${esc(t.task)}" placeholder="e.g. Set up tee stations, lay cones…" onchange="EP.setupTasks[${i}].task=this.value"/>
+        <input style="width:130px" value="${esc(t.coach||'')}" placeholder="Coach…" onchange="EP.setupTasks[${i}].coach=this.value"/>
+        <button class="btn btn-red btn-xs" onclick="rmSetupTask(${i})">✕</button>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  showModal(`${mhdr(isNew?'New Practice Plan':'Edit Practice Plan')}
+    <div class="col">
+      <div class="row" style="gap:8px">
+        <div class="f1"><div class="lbl">Title</div><input id="plt" value="${esc(EP.title)}" placeholder="e.g. Thursday Fielding Focus"/></div>
+        <div><div class="lbl">Date</div><input type="date" id="pld" value="${EP.date}" style="width:155px"/></div>
+      </div>
+      <div class="row" style="gap:8px">
+        <div><div class="lbl">Start Time</div><input type="time" id="pls" value="${EP.startTime||''}" style="width:130px" onchange="EP.startTime=this.value;rPE(${isNew})"/></div>
+        <div><div class="lbl">End Time</div><input type="time" id="ple" value="${EP.endTime||''}" style="width:130px" onchange="EP.endTime=this.value"/></div>
+      </div>
+      <div><div class="lbl">Theme / Notes</div><textarea id="pln" rows="2" placeholder="Goals, themes, focus for this practice…">${esc(EP.notes)}</textarea></div>
+      ${setupHtml}
+      <div style="border-top:1px solid var(--border);padding-top:14px">
+        <div class="row" style="margin-bottom:10px">
+          <div style="font-weight:700;font-size:14px">Activities</div>
+          <div class="f1"></div>
+          <button class="btn btn-blue btn-xs" onclick="addStBlk()">⊞ Station Block</button>
+          <button class="btn btn-dim btn-xs" onclick="addCustomAct()">+ Custom</button>
+        </div>
+        ${picker}
+        <div id="items-list">${itemsHtml||'<div style="color:var(--muted);text-align:center;padding:16px;font-size:12px">Search above and add drills.</div>'}</div>
+      </div>
+      <div class="row">
+        <button class="btn btn-gold" onclick="savePlan(${isNew})">Save Plan</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`,true);
+  setTimeout(()=>rDPick(),50);
+}
+function syncEP(){
+  if(!EP)return;
+  EP.title=document.getElementById('plt')?.value||EP.title;
+  EP.date=document.getElementById('pld')?.value||EP.date;
+  EP.notes=document.getElementById('pln')?.value||EP.notes;
+  EP.startTime=document.getElementById('pls')?.value||EP.startTime;
+  EP.endTime=document.getElementById('ple')?.value||EP.endTime;
+}
+function rPE(isNew){syncEP();showPlanEditor(isNew);}
+
+let _dpCat='All';
+function setDP(c){_dpCat=c;document.querySelectorAll('[id^="dp-"]').forEach(b=>b.classList.toggle('on',b.id===`dp-${c}`));rDPick();}
+function rDPick(){
+  const el=document.getElementById('dp-res');if(!el)return;
+  const q=(document.getElementById('dpick')?.value||'').toLowerCase();
+  const used=new Set((EP?.items||[]).filter(i=>i.drillId).map(i=>i.drillId));
+  const res=DB.drills.filter(d=>{
+    if(_dpCat!=='All'&&d.category!==_dpCat)return false;
+    if(q){const hay=(d.name+' '+(d.tags||'')).toLowerCase();if(!q.split(' ').every(t=>hay.includes(t)))return false;}
+    return true;
+  }).slice(0,20);
+  if(!res.length){el.innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:10px">No drills match</div>';return;}
+  el.innerHTML=res.map(d=>{
+    const cc=CAT_COLOR[d.category]||'#888';const added=used.has(d.id);
+    return `<div style="display:flex;align-items:center;gap:8px;background:var(--card);border-radius:8px;padding:8px 10px;border:1px solid ${added?'var(--gold)44':'var(--border)'}">
+      <div class="f1">
+        <div style="font-weight:700;font-size:12px">${esc(d.name)}</div>
+        <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>
+      </div>
+      <button class="btn btn-xs ${added?'btn-dim':'btn-gold'}" ${added?'disabled style="opacity:.5"':''} onclick="addDrillToP('${d.id}')">
+        ${added?'Added':'+ Add'}
+      </button>
+    </div>`;
+  }).join('');
+}
+function addDrillToP(id){
+  if(!EP)return;
+  EP.items.push({id:uid(),type:'drill',drillId:id,duration:'',notes:'',coach:''});
+  syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));
+}
+function addCustomAct(){if(!EP)return;EP.items.push({id:uid(),type:'custom',drillId:null,customName:'',duration:'',notes:'',coach:''});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function addStBlk(){
+  if(!EP)return;const bid=uid();
+  ['Station 1','Station 2','Station 3'].forEach(lbl=>EP.items.push({id:uid(),type:'station',blockId:bid,stationLabel:lbl,drillId:null,duration:'',notes:'',coach:''}));
+  syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));
+}
+function addSt(bid){if(!EP)return;const n=EP.items.filter(i=>i.blockId===bid).length+1;EP.items.push({id:uid(),type:'station',blockId:bid,stationLabel:`Station ${n}`,drillId:null,duration:'',notes:'',coach:''});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function rmBlk(bid){if(!EP)return;EP.items=EP.items.filter(i=>i.blockId!==bid);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function rmPI(id){if(!EP)return;EP.items=EP.items.filter(i=>i.id!==id);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function updPI(id,f,v){if(!EP)return;const it=EP.items.find(i=>i.id===id);if(it){it[f]=v;if(f==='duration'){const ts=calcTS();document.querySelectorAll('[id^="ts-"]').forEach(e=>{const k=e.id.slice(3);if(ts[k])e.textContent='⏱ '+ts[k];});}}}
+function mvPI(id,dir){if(!EP)return;const a=EP.items;const i=a.findIndex(x=>x.id===id);const ni=i+dir;if(ni<0||ni>=a.length)return;[a[i],a[ni]]=[a[ni],a[i]];syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function mvBlk(bid,dir){
+  if(!EP)return;
+  const seen=new Set();const groups=[];
+  EP.items.forEach(item=>{
+    if(item.type==='station'){if(seen.has(item.blockId))return;seen.add(item.blockId);groups.push(EP.items.filter(x=>x.blockId===item.blockId));}
+    else groups.push([item]);
+  });
+  const gi=groups.findIndex(g=>g[0].blockId===bid);const ni=gi+dir;
+  if(ni<0||ni>=groups.length)return;
+  [groups[gi],groups[ni]]=[groups[ni],groups[gi]];
+  EP.items=groups.flat();syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));
+}
+function addSetupTask(){if(!EP)return;EP.setupTasks.push({task:'',coach:''});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function rmSetupTask(i){if(!EP)return;EP.setupTasks.splice(i,1);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function savePlan(isNew){
+  if(!EP)return;syncEP();
+  if(isNew)DB.plans.push(EP);else{const i=DB.plans.findIndex(p=>p.id===EP.id);if(i>=0)DB.plans[i]=EP;}
+  closeModal();scheduleSave();renderTab();
+}
+
+// ── PLAN VIEW ──────────────────────────────────────────
+function viewPlan(id){
+  const p=DB.plans.find(x=>x.id===id);if(!p)return;
+  const tot=totalMin(p);
+  // Build time schedule
+  const ts={};
+  if(p.startTime){
+    const[sh,sm]=p.startTime.split(':').map(Number);let mins=sh*60+sm;const seen=new Set();
+    (p.items||[]).forEach(item=>{
+      const key=item.type==='station'?item.blockId:item.id;
+      if(item.type==='station'&&seen.has(item.blockId))return;
+      if(item.type==='station')seen.add(item.blockId);
+      const dur=parseInt(item.duration)||0;
+      const h=Math.floor(mins/60)%12||12,mn=String(mins%60).padStart(2,'0'),ap=mins<720?'am':'pm';
+      const em=mins+dur,eh=Math.floor(em/60)%12||12,emn=String(em%60).padStart(2,'0'),eap=em<720?'am':'pm';
+      ts[key]=dur>0?`${h}:${mn}${ap} – ${eh}:${emn}${eap}`:`${h}:${mn}${ap}`;
+      mins+=dur;
+    });
+  }
+  const seen2=new Set();let ti=0;
+  const itemsHtml=(p.items||[]).map(item=>{
+    if(item.type==='station'){
+      if(seen2.has(item.blockId))return'';seen2.add(item.blockId);
+      const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
+      const tstr=ts[item.blockId]?`<span style="font-size:11px;color:var(--green);font-weight:700">⏱ ${ts[item.blockId]}</span>`:'';
+      const scols=sts.map((st,si)=>{
+        const d=st.drillId?getDrill(st.drillId):null;const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+        return `<div style="padding:12px;border-right:${si<sts.length-1?'1px solid #5b8af533':'none'}">
+          <div style="font-weight:800;color:var(--blue);font-size:11px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">${esc(st.stationLabel||'Station '+(si+1))}</div>
+          ${d?`<div style="font-weight:700;font-size:13px;margin-bottom:4px">${esc(d.name)}</div><span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>`:`<div style="color:var(--muted);font-size:12px">${esc(st.customName||'No drill assigned')}</div>`}
+          ${st.coach?`<div style="font-size:11px;font-weight:700;color:var(--gold);margin-top:5px">👤 ${esc(st.coach)}</div>`:''}
+          ${st.duration?`<div style="margin-top:5px"><span class="badge" style="background:var(--dim);color:var(--muted);font-size:10px">${st.duration} min</span></div>`:''}
+          ${st.notes?`<div style="font-size:11px;color:var(--muted);margin-top:4px">${esc(st.notes)}</div>`:''}
+          ${d?.description?`<div style="font-size:11px;color:var(--muted);font-style:italic;line-height:1.55;margin-top:6px;white-space:pre-wrap">${esc(d.description)}</div>`:''}
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:18px;border:2px solid var(--blue);border-radius:10px;overflow:hidden">
+        <div style="background:#5b8af522;border-bottom:1px solid #5b8af544;padding:8px 12px;display:flex;align-items:center;gap:10px">
+          <span style="background:var(--blue);color:#fff;border-radius:5px;padding:2px 10px;font-size:11px;font-weight:800">STATIONS</span>
+          ${tstr}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(${Math.min(sts.length,3)},1fr)">${scols}</div>
+      </div>`;
+    } else {
+      ti++;
+      const d=item.drillId?getDrill(item.drillId):null;
+      const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+      const tstr=ts[item.id]?`<span style="font-size:11px;color:var(--green);font-weight:700">⏱ ${ts[item.id]}</span>`:'';
+      return `<div style="display:flex;gap:12px;margin-bottom:18px;border-left:3px solid var(--gold);padding-left:14px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:26px;color:var(--gold);line-height:1;min-width:26px">${ti}</div>
+        <div class="f1" style="min-width:0">
+          <div class="row" style="margin-bottom:4px;gap:6px;flex-wrap:wrap">
+            <span style="font-weight:700;font-size:14px">${esc(d?d.name:(item.customName||'Custom Activity'))}</span>
+            ${tstr}
+            ${item.duration?`<span class="badge" style="background:var(--dim);color:var(--muted);font-size:10px">${item.duration} min</span>`:''}
+            ${d?`<span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>`:''}
+            ${d?.url&&ytId(d.url)?`<a href="${esc(d.url)}" target="_blank" style="font-size:12px">▶ Watch</a>`:''}
+          </div>
+          ${item.coach?`<div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:4px">👤 ${esc(item.coach)}</div>`:''}
+          ${item.notes?`<div style="font-size:12px;font-weight:700;border-left:2px solid var(--gold);padding-left:6px;margin-bottom:6px">${esc(item.notes)}</div>`:''}
+          ${d?.description?`<div style="font-size:12px;color:var(--muted);line-height:1.65;white-space:pre-wrap">${esc(d.description)}</div>`:''}
+          ${d?.tags?`<div class="row" style="margin-top:6px;gap:3px;flex-wrap:wrap">${d.tags.split(',').map(t=>t.trim()).filter(Boolean).map(t=>`<span class="badge" style="background:var(--dim);color:var(--muted);font-size:10px">${esc(t)}</span>`).join('')}</div>`:''}
+        </div>
+      </div>`;
+    }
+  }).join('');
+  const setupHtml=(p.setupTasks||[]).length?`<div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;border:1px solid var(--border)">
+    <div style="font-weight:700;font-size:13px;color:var(--gold);margin-bottom:8px">🔧 Pre-Practice Setup</div>
+    ${(p.setupTasks||[]).map((t,i)=>`<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:6px;font-size:13px">
+      <span style="color:var(--muted);font-weight:700;min-width:18px">${i+1}.</span>
+      <span class="f1">${esc(t.task)}</span>
+      ${t.coach?`<span style="color:var(--gold);font-weight:700;font-size:11px;white-space:nowrap">👤 ${esc(t.coach)}</span>`:''}
+    </div>`).join('')}
+  </div>`:'';
+  showModal(`${mhdr(p.title||'Practice Plan')}
+    <div class="row" style="margin-bottom:14px;gap:6px">
+      <span class="badge" style="background:var(--dim);color:var(--muted)">${esc(p.date)}</span>
+      ${p.startTime?`<span class="badge" style="background:var(--green)22;color:var(--green)">${fmtTime(p.startTime)}${p.endTime?' – '+fmtTime(p.endTime):''}</span>`:''}
+      ${tot?`<span class="badge" style="background:var(--blue)22;color:var(--blue)">~${tot} min</span>`:''}
+      <div class="f1"></div>
+      <button class="btn btn-dim btn-sm" onclick="emailPlan('${id}')">✉ Email</button>
+      <button class="btn btn-gold btn-sm" onclick="dlPlan('${id}')">🖨 Download</button>
+    </div>
+    ${p.notes?`<div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;border-left:4px solid var(--gold);font-size:13px;color:var(--muted);line-height:1.7">${esc(p.notes)}</div>`:''}
+    ${setupHtml}
+    ${itemsHtml}
+    <div class="row" style="margin-top:10px;gap:8px">
+      <button class="btn btn-dim" onclick="closeModal()">Close</button>
+      <button class="btn btn-dim" onclick="closeModal();openPlanEdit('${id}')">Edit</button>
+      <button class="btn btn-gold" onclick="dlPlan('${id}')">🖨 Download</button>
+    </div>`,true);
+}
+
+// ── EMAIL ──
+function emailPlan(id){
+  const p=DB.plans.find(x=>x.id===id);if(!p)return;
+  const tot=totalMin(p);
+  let t=`PRACTICE PLAN: ${p.title||'Untitled'}\n`;
+  t+=`Date: ${p.date}`;
+  if(p.startTime)t+=`  |  ${fmtTime(p.startTime)}${p.endTime?' – '+fmtTime(p.endTime):''}`;
+  if(tot)t+=`  |  ~${tot} min`;t+='\n';
+  if(p.notes)t+=`\nTHEME: ${p.notes}\n`;
+  if((p.setupTasks||[]).length){t+='\n🔧 PRE-PRACTICE SETUP:\n';(p.setupTasks||[]).forEach((s,i)=>{t+=`${i+1}. ${s.task}${s.coach?' → '+s.coach:''}\n`;});}
+  t+='\n═══════════════════════════════\n\n';
+  const seen=new Set();let ti=0;
+  (p.items||[]).forEach(item=>{
+    if(item.type==='station'){
+      if(seen.has(item.blockId))return;seen.add(item.blockId);
+      const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
+      t+=`[ STATIONS — simultaneously ]\n`;
+      sts.forEach((st,si)=>{
+        const d=st.drillId?getDrill(st.drillId):null;
+        t+=`  ${st.stationLabel||'Station '+(si+1)}: ${d?d.name:(st.customName||'—')}`;
+        if(st.duration)t+=` (${st.duration} min)`;if(st.coach)t+=`  COACH: ${st.coach}`;t+='\n';
+        if(st.notes)t+=`    Notes: ${st.notes}\n`;
+        if(d?.description)t+='\n'+d.description.split('\n').map(l=>'    '+l).join('\n')+'\n\n';
+      });
+    } else {
+      ti++;
+      const d=item.drillId?getDrill(item.drillId):null;
+      const name=d?d.name:(item.customName||'Custom Activity');
+      t+=`${ti}. ${name.toUpperCase()}${d?'  ['+d.category+']':''}\n`;
+      if(item.duration)t+=`   DURATION: ${item.duration} min\n`;
+      if(item.coach)t+=`   COACH: ${item.coach}\n`;
+      if(item.notes)t+=`   NOTES: ${item.notes}\n`;
+      if(d?.description)t+='\n'+d.description.split('\n').map(l=>'   '+l).join('\n')+'\n';
+      t+='\n───────────────────────────────\n\n';
+    }
+  });
+  t+='Generated by ⚡ HAMR Softball Hub';
+  window.open(`mailto:?subject=${encodeURIComponent('Practice Plan: '+(p.title||'Untitled')+' — '+p.date)}&body=${encodeURIComponent(t)}`);
+}
+
+// ── DOWNLOAD ──
+function dlPlan(id){
+  const p=DB.plans.find(x=>x.id===id);if(!p)return;
+  const tot=totalMin(p);
+  const ts={};
+  if(p.startTime){
+    const[sh,sm]=p.startTime.split(':').map(Number);let mins=sh*60+sm;const seen=new Set();
+    (p.items||[]).forEach(item=>{
+      const key=item.type==='station'?item.blockId:item.id;
+      if(item.type==='station'&&seen.has(item.blockId))return;if(item.type==='station')seen.add(item.blockId);
+      const dur=parseInt(item.duration)||0;
+      const h=Math.floor(mins/60)%12||12,mn=String(mins%60).padStart(2,'0'),ap=mins<720?'am':'pm';
+      const em=mins+dur,eh=Math.floor(em/60)%12||12,emn=String(em%60).padStart(2,'0'),eap=em<720?'am':'pm';
+      ts[key]=dur>0?`${h}:${mn}${ap} – ${eh}:${emn}${eap}`:`${h}:${mn}${ap}`;
+      mins+=dur;
+    });
+  }
+  // Quick schedule
+  const seen3=new Set();let qti=0;
+  const qrows=(p.items||[]).map(item=>{
+    if(item.type==='station'){
+      if(seen3.has(item.blockId))return'';seen3.add(item.blockId);
+      const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
+      const subrows=sts.map((st,si)=>{const d=st.drillId?getDrill(st.drillId):null;
+        return `<tr style="background:#f5f8ff;border-bottom:1px solid #e8eeff"><td style="padding:5px 12px 5px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5">${esc(st.stationLabel||'Station '+(si+1))}</td><td style="padding:5px 12px;font-size:11px;font-weight:700">${esc(d?d.name:(st.customName||'—'))}</td><td style="padding:5px 12px;font-size:11px;text-align:right">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td></tr>`;
+      }).join('');
+      return `<tr style="background:#ddeaff"><td style="padding:7px 12px;font-size:11px;font-weight:800;color:#5b8af5">${esc(ts[item.blockId]||'')}</td><td colspan="2" style="font-size:12px;font-weight:800;color:#5b8af5">⊞ STATIONS — ${sts.length} groups simultaneously</td></tr>${subrows}<tr><td colspan="3" style="padding:2px 0;background:#f0f4ff;border-bottom:2px solid #5b8af5"></td></tr>`;
+    } else {
+      qti++;const d=item.drillId?getDrill(item.drillId):null;const name=d?d.name:(item.customName||'Custom');
+      return `<tr style="border-bottom:1px solid #e8e8e8"><td style="padding:7px 12px;font-size:11px;color:#888;font-weight:700;width:130px">${esc(ts[item.id]||'')}</td><td style="padding:7px 12px;font-size:12px;font-weight:700">${qti}. ${esc(name)}${d?` <span style="font-size:10px;font-weight:400;color:#888">[${d.category}]</span>`:''}</td><td style="padding:7px 12px;font-size:11px;text-align:right">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td></tr>`;
+    }
+  }).join('');
+  // Full rows
+  const seen4=new Set();let fti=0;
+  const frows=(p.items||[]).map(item=>{
+    if(item.type==='station'){
+      if(seen4.has(item.blockId))return'';seen4.add(item.blockId);
+      const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
+      const tstr=ts[item.blockId]?`<span style="font-size:10px;color:#2a9d5c;font-weight:700;margin-left:8px">⏱ ${ts[item.blockId]}</span>`:'';
+      const scols=sts.map((st,si)=>{const d=st.drillId?getDrill(st.drillId):null;const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+        return `<td style="padding:10px;border:1px solid #ddd;vertical-align:top;width:${Math.floor(100/sts.length)}%">
+          <div style="font-size:10px;font-weight:800;color:#5b8af5;text-transform:uppercase;margin-bottom:4px">${esc(st.stationLabel||'Station '+(si+1))}</div>
+          ${d?`<div style="font-weight:800;font-size:13px;margin-bottom:3px">${esc(d.name)}</div>`:''}
+          ${st.duration?`<div style="font-size:11px;font-weight:700;margin-bottom:3px">⏱ <b>${st.duration} min</b></div>`:''}
+          ${st.coach?`<div style="font-size:11px;font-weight:700;margin-bottom:4px">👤 <b>${esc(st.coach)}</b></div>`:''}
+          ${st.notes?`<div style="font-size:11px;font-weight:700;margin-bottom:4px">${esc(st.notes)}</div>`:''}
+          ${d?.description?`<div style="font-size:10px;color:#666;line-height:1.6;white-space:pre-wrap">${esc(d.description)}</div>`:''}
+        </td>`;
+      }).join('');
+      return `<div style="margin-bottom:16px;border:2px solid #5b8af5;border-radius:8px;overflow:hidden">
+        <div style="background:#5b8af522;padding:7px 12px;font-size:11px;font-weight:800;color:#5b8af5">STATIONS${tstr}</div>
+        <table style="width:100%;border-collapse:collapse"><tr>${scols}</tr></table>
+      </div>`;
+    } else {
+      fti++;const d=item.drillId?getDrill(item.drillId):null;const name=d?d.name:(item.customName||'Custom Activity');
+      const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+      const tstr=ts[item.id]?`<span style="font-size:10px;color:#2a9d5c;font-weight:700;margin-left:6px">⏱ ${ts[item.id]}</span>`:'';
+      return `<div style="display:flex;gap:12px;border-left:3px solid #f0a500;padding:0 0 16px 14px;margin-bottom:16px">
+        <div style="font-size:24px;font-weight:800;color:#f0a500;line-height:1;min-width:24px">${fti}</div>
+        <div style="flex:1">
+          <div style="font-weight:800;font-size:14px;margin-bottom:3px">${esc(name)} <span style="font-size:10px;font-weight:400;color:${cc};border:1px solid ${cc}88;border-radius:4px;padding:1px 5px">${d?d.category:''}</span>${tstr}</div>
+          ${item.duration?`<div style="font-size:11px;font-weight:700;margin-bottom:3px">⏱ <b>${item.duration} min</b></div>`:''}
+          ${item.coach?`<div style="font-size:11px;font-weight:700;color:#b07800;margin-bottom:3px">👤 <b>${esc(item.coach)}</b></div>`:''}
+          ${item.notes?`<div style="font-size:12px;font-weight:700;border-left:2px solid #f0a500;padding-left:6px;margin-bottom:5px">${esc(item.notes)}</div>`:''}
+          ${d?.description?`<div style="font-size:11px;color:#555;line-height:1.7;white-space:pre-wrap">${esc(d.description)}</div>`:''}
+          ${d?.tags?`<div style="font-size:10px;color:#999;margin-top:4px">Skills: ${esc(d.tags)}</div>`:''}
+        </div>
+      </div>`;
+    }
+  }).join('');
+  const setupPrint=(p.setupTasks||[]).length?`<div style="margin-bottom:18px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden"><div style="background:#fff8e6;border-bottom:1px solid #e0e0e0;padding:7px 12px;font-size:12px;font-weight:800;color:#b07800">🔧 PRE-PRACTICE SETUP</div><table style="width:100%;border-collapse:collapse">${(p.setupTasks||[]).map((t,i)=>`<tr style="border-bottom:1px solid #f0f0f0"><td style="padding:6px 10px;font-size:11px;color:#888;width:20px">${i+1}.</td><td style="padding:6px 10px;font-size:12px">${esc(t.task)}</td><td style="padding:6px 10px;font-size:11px;font-weight:700;color:#b07800;text-align:right">${t.coach?'👤 '+esc(t.coach):''}</td></tr>`).join('')}</table></div>`:'';
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${esc(p.title||'Practice Plan')}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Helvetica Neue',Arial,sans-serif;color:#1a1a1a;padding:28px 36px;max-width:800px;margin:0 auto}h1{font-size:22px;font-weight:800;margin-bottom:4px}.meta{font-size:12px;color:#555;margin-bottom:12px}.theme{background:#f7f7f7;border-left:4px solid #f0a500;padding:10px 14px;margin-bottom:18px;font-size:12px;color:#333;line-height:1.6;border-radius:0 6px 6px 0}.shdr{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#888;margin:22px 0 8px;padding-bottom:4px;border-bottom:2px solid #eee}.footer{margin-top:28px;padding-top:10px;border-top:1px solid #ddd;font-size:10px;color:#aaa;text-align:center}@media print{body{padding:16px}}<\/style><\/head><body>
+<h1>${esc(p.title||'Practice Plan')}</h1>
+<div class="meta">${esc(p.date)}${p.startTime?' · '+fmtTime(p.startTime)+(p.endTime?' – '+fmtTime(p.endTime):''):''} ${tot?' · ~'+tot+' min':''}</div>
+${p.notes?`<div class="theme">${esc(p.notes).replace(/\n/g,'<br/>')}</div>`:''}
+<div class="shdr">⚡ Quick Schedule — At a Glance</div>
+<table style="width:100%;border-collapse:collapse;margin-bottom:22px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden">
+<thead><tr style="background:#1a1a1a;color:#fff"><th style="padding:7px 12px;font-size:10px;text-align:left;width:130px">TIME</th><th style="padding:7px 12px;font-size:10px;text-align:left">ACTIVITY</th><th style="padding:7px 12px;font-size:10px;text-align:right">COACH</th></tr></thead>
+<tbody>${qrows}</tbody></table>
+${setupPrint}
+<div class="shdr">📋 Full Practice Plan</div>
+${frows}
+<div class="footer">⚡ HAMR Softball Hub · HAMR Hawks</div>
+</body></html>`;
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download=`PracticePlan_${(p.title||'Plan').replace(/\s+/g,'_')}_${p.date}.html`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+// ═══ SKILLS ══════════════════════════════════════════════
+let _skillPid='';
+function renderSkills(){
+  if(!DB.players.length)return'<div class="empty">Add players to your roster first.</div>';
+  const ps=DB.playerSkills||[];
+  const getE=pid=>ps.find(e=>e.playerId===pid)||{playerId:pid,skills:[]};
+  const sel=_skillPid?getE(_skillPid):null;
+  const selP=DB.players.find(p=>p.id===_skillPid);
+  const allTags=[...new Set(DB.drills.flatMap(d=>(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean)))].sort();
+  const freq={};ps.forEach(e=>e.skills.forEach(s=>{freq[s]=(freq[s]||[]).concat(e.playerId);}));
+  const teamNeeds=Object.entries(freq).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
+  const focus=sel?.skills||[];
+  const recs=focus.length===0?[]:DB.drills.map(d=>{
+    const hay=(d.name+' '+(d.tags||'')+' '+(d.description||'')).toLowerCase();
+    const m=focus.filter(s=>hay.includes(s));return{d,m,s:m.length};
+  }).filter(r=>r.s>0).sort((a,b)=>b.s-a.s);
+
+  const today=new Date();
+  const pList=DB.players.map(p=>{const e=getE(p.id);const on=p.id===_skillPid;
+    const lastSent=e.lastSent||null;
+    const daysSince=lastSent?Math.floor((today-new Date(lastSent))/(1000*60*60*24)):null;
+    const overdue=daysSince!==null&&daysSince>14;
+    const fresh=daysSince!==null&&daysSince<=7;
+    const sentLabel=lastSent?`Sent ${daysSince===0?'today':daysSince===1?'yesterday':daysSince+' days ago'}`:'Never sent';
+    const sentColor=fresh?'var(--green)':overdue?'var(--red)':'var(--muted)';
+    return `<div onclick="_skillPid='${p.id}';renderTab()" style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;background:${on?'var(--gold)22':'var(--surface)'};border:1px solid ${on?'var(--gold)66':overdue?'var(--red)33':'var(--border)'};margin-bottom:5px;transition:.1s">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;color:${on?'var(--gold)':'var(--muted)'};min-width:30px">#${esc(p.number||'—')}</div>
+      <div class="f1">
+        <div style="font-weight:700;font-size:13px">${esc(p.name)}</div>
+        <div style="font-size:11px;color:var(--muted)">${e.skills.length?e.skills.length+' focus skills':'No focus skills yet'}</div>
+        ${lastSent||e.skills.length?`<div style="font-size:10px;color:${sentColor};font-weight:700;margin-top:1px">${e.skills.length?(overdue?'⚠ ':'✉ ')+sentLabel:''}</div>`:''}
+      </div>
+      ${overdue?`<span class="badge" style="background:var(--red)22;color:var(--red);font-size:10px">Overdue</span>`:
+        fresh?`<span class="badge" style="background:var(--green)22;color:var(--green);font-size:10px">✓ Sent</span>`:
+        e.skills.length?`<span class="badge" style="background:var(--gold)22;color:var(--gold)">${e.skills.length}</span>`:''}
+    </div>`;
+  }).join('');
+
+  const tnHtml=teamNeeds.length?teamNeeds.map(([sk,pids])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+    <div class="f1" style="font-size:12px;font-weight:600;text-transform:capitalize">${esc(sk)}</div>
+    <span class="badge" style="background:var(--dim);color:var(--muted)">${pids.length}</span>
+  </div>`).join(''):'<div style="font-size:12px;color:var(--muted)">Add skills to players to see team patterns.</div>';
+
+  const QUICK=['casting','footwork','drop step','communication','throwing accuracy','soft hands','load','hip coil','base running','blocking','receiving','hesitation','first step','lateral movement','extension','pop up throw'];
+  const qpills=QUICK.filter(s=>!sel?.skills.includes(s)).map(s=>`<span onclick="addSkill('${_skillPid}','${s}')" style="background:var(--dim);color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;display:inline-block;margin-bottom:4px">+ ${s}</span>`).join(' ');
+
+  const hw=sel?.homework||[];
+  const videoRecs=recs.filter(({d})=>d.url&&ytId(d.url));
+  const recsHtml=recs.map(({d,m,s})=>{const cc=CAT_COLOR[d.category]||'#888';
+    const vid=d.url&&ytId(d.url);
+    const inHw=hw.includes(d.id);
+    return `<div class="card" style="margin-bottom:9px;border-left:4px solid ${cc}${inHw?';box-shadow:0 0 0 2px #3ddc8444':''}">
+      <div class="row" style="margin-bottom:5px">
+        <div class="f1"><div style="font-weight:700;font-size:13px">${esc(d.name)}</div>
+          <div class="row" style="margin-top:4px;gap:5px">
+            <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>
+            <span class="badge" style="background:${s>=3?'var(--green)':s>=2?'var(--gold)':'var(--dim)'}22;color:${s>=3?'var(--green)':s>=2?'var(--gold)':'var(--muted)'};font-size:10px">${s} skill${s!==1?'s':''} matched</span>
+            ${vid?'<span class="badge" style="background:var(--red)22;color:var(--red);font-size:10px">📹 Video</span>':''}
+          </div>
+        </div>
+        ${vid?`<a href="${esc(d.url)}" target="_blank" style="font-size:18px;text-decoration:none">▶️</a>`:''}
+      </div>
+      <div class="row" style="gap:4px;flex-wrap:wrap;margin-bottom:${vid?'8':'0'}px">${m.map(s=>`<span class="badge" style="background:var(--green)22;color:var(--green);font-size:10px">✓ ${esc(s)}</span>`).join('')}</div>
+      ${vid?`<button class="btn btn-sm ${inHw?'btn-green':'btn-dim'}" onclick="toggleHw('${_skillPid}','${d.id}')">${inHw?'✓ In Homework':'+ Add to Homework'}</button>`:''}
+    </div>`;
+  }).join('');
+
+  // Count overdue players (have skills, haven't been sent in 14+ days)
+  const overdueCount=DB.players.filter(p=>{
+    const e=getE(p.id);if(!e.skills.length)return false;
+    if(!e.lastSent)return true;
+    return Math.floor((today-new Date(e.lastSent))/(1000*60*60*24))>14;
+  }).length;
+  const neverSentCount=DB.players.filter(p=>{const e=getE(p.id);return e.skills.length&&!e.lastSent;}).length;
+
+  return `<div class="row" style="margin-bottom:18px"><h2 class="st">⭐ Player Skills</h2><div class="f1"></div>
+    ${overdueCount>0?`<span class="badge" style="background:var(--red)22;color:var(--red);border:1px solid var(--red)44">⚠ ${overdueCount} player${overdueCount!==1?'s':''} overdue for homework</span>`:''}
+    ${sel?.skills.length?`<span class="badge" style="background:var(--gold)22;color:var(--gold)">${recs.length} drills recommended</span>`:''}
+  </div>
+  <div style="display:grid;grid-template-columns:270px 1fr;gap:16px;align-items:start">
+    <div>
+      <div class="card" style="margin-bottom:12px;padding:14px"><div class="lbl" style="margin-bottom:8px">Select Player</div>${pList}</div>
+      <div class="card" style="padding:14px"><div class="lbl" style="margin-bottom:8px">Team Focus Areas</div>${tnHtml}</div>
+    </div>
+    <div>
+      ${sel&&selP?`<div class="card" style="margin-bottom:14px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:12px">#${esc(selP.number||'—')} ${esc(selP.name)} — Focus Skills</div>
+        ${sel.skills.length?`<div class="row" style="margin-bottom:12px;flex-wrap:wrap;gap:6px">${sel.skills.map(s=>`<div style="display:flex;align-items:center;gap:4px;background:var(--gold)22;border:1px solid var(--gold)55;border-radius:20px;padding:4px 10px 4px 12px;font-size:12px;font-weight:700;color:var(--gold)">${esc(s)}<button onclick="rmSkill('${_skillPid}','${esc(s)}')" style="background:none;border:none;color:var(--gold);cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 3px">×</button></div>`).join('')}</div>`:
+        `<div style="color:var(--muted);font-size:13px;margin-bottom:12px;font-style:italic">No focus skills yet — add some below.</div>`}
+        <div class="lbl">Add a Focus Skill</div>
+        <div class="row" style="gap:8px">
+          <input id="sk-inp" class="f1" placeholder="e.g. casting, footwork, drop step…" list="sk-list" onkeydown="if(event.key==='Enter')addSkillInp()"/>
+          <datalist id="sk-list">${allTags.map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
+          <button class="btn btn-gold" onclick="addSkillInp()">+ Add</button>
+        </div>
+        <div style="margin-top:10px"><div class="lbl" style="margin-bottom:6px">Quick Add</div><div>${qpills}</div></div>
+      </div>
+      ${focus.length?`
+        <div class="row" style="margin-bottom:10px">
+          <div style="font-weight:700;font-size:14px">🎯 Recommended Drills for ${esc(selP.name.split(' ')[0])}</div>
+          <div class="f1"></div>
+          ${hw.length?`
+            <div class="row" style="gap:8px;flex-wrap:wrap">
+              <button class="btn btn-gold btn-sm" onclick="emailHomework('${_skillPid}')">✉ Email Homework (${hw.length} drills)</button>
+              <button class="btn btn-red btn-sm" onclick="clearHomework('${_skillPid}')">✕ Clear All</button>
+            </div>
+          `:''}
+          ${sel?.lastSent?`<div style="font-size:11px;color:var(--muted);margin-top:4px">Last sent: <strong style="color:var(--text)">${sel.lastSent}</strong></div>`:
+            sel?.skills.length?`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">No homework sent yet</div>`:''
+          }
+        </div>
+        ${videoRecs.length?'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">📹 Drills with videos can be added to homework. Click <strong style=\"color:var(--text)\">+ Add to Homework</strong> to build their practice plan.</div>':''}
+        ${recsHtml||'<div class="empty">No drills match these skills yet.</div>'}
+      `:''}
+      `:'<div class="empty">← Select a player to manage their focus skills and get drill recommendations.</div>'}
+    </div>
+  </div>`;
+}
+function addSkill(pid,s){
+  const sk=s.trim().toLowerCase();if(!sk)return;
+  const ps=DB.playerSkills||[];
+  const idx=ps.findIndex(e=>e.playerId===pid);
+  if(idx>=0){if(!ps[idx].skills.includes(sk))ps[idx].skills.push(sk);}
+  else ps.push({playerId:pid,skills:[sk]});
+  DB.playerSkills=ps;scheduleSave();renderTab();
+}
+function addSkillInp(){const v=document.getElementById('sk-inp')?.value;if(v&&_skillPid)addSkill(_skillPid,v);}
+function rmSkill(pid,s){
+  const ps=DB.playerSkills||[];const idx=ps.findIndex(e=>e.playerId===pid);
+  if(idx>=0){ps[idx].skills=ps[idx].skills.filter(x=>x!==s);scheduleSave();renderTab();}
+}
+function toggleHw(pid,drillId){
+  const ps=DB.playerSkills||[];
+  const idx=ps.findIndex(e=>e.playerId===pid);
+  if(idx<0)return;
+  const hw=ps[idx].homework||[];
+  ps[idx].homework=hw.includes(drillId)?hw.filter(id=>id!==drillId):[...hw,drillId];
+  DB.playerSkills=ps;scheduleSave();renderTab();
+}
+function clearHomework(pid){
+  const ps=DB.playerSkills||[];
+  const idx=ps.findIndex(e=>e.playerId===pid);
+  if(idx<0)return;
+  ps[idx].homework=[];
+  DB.playerSkills=ps;scheduleSave();renderTab();
+}
+function emailHomework(pid){
+  const p=getPlayer(pid);if(!p)return;
+  const ps=DB.playerSkills||[];
+  const entry=ps.find(e=>e.playerId===pid);if(!entry)return;
+  const hwDrills=(entry.homework||[]).map(id=>getDrill(id)).filter(Boolean);
+  if(!hwDrills.length){alert('No homework drills selected yet. Click + Add to Homework on drills with videos.');return;}
+
+  // Gather latest assessments for this player
+  const metrics=DB.metrics||[];
+  const assessRows=METRIC_TYPES.map(mt=>{
+    const entries=metrics.filter(m=>m.playerId===pid&&m.metricKey===mt.key).sort((a,b)=>b.date.localeCompare(a.date));
+    if(!entries.length)return null;
+    return {label:mt.label,value:entries[0].value,unit:mt.unit,date:entries[0].date};
+  }).filter(Boolean);
+
+  // Focus skills
+  const skills=(entry.skills||[]);
+
+  // Drill rows with clickable thumbnails and video links
+  const drillRows=hwDrills.map((d,i)=>{
+    const vid=ytId(d.url);
+    const thumbUrl=vid?`https://img.youtube.com/vi/${vid}/hqdefault.jpg`:'';
+    const desc=(d.description||'').replace(/\n/g,'<br/>');
+    return `<div style="margin-bottom:32px;border-left:4px solid #f0a500;padding-left:18px">
+      <div style="font-size:17px;font-weight:800;color:#1a1a1a;margin-bottom:5px">${i+1}. ${d.name}</div>
+      <div style="font-size:11px;color:#999;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px">${d.category}${d.tags?' · '+d.tags.split(',').slice(0,3).map(t=>t.trim()).join(' · '):''}</div>
+      ${d.description?`<div style="font-size:13px;color:#333;line-height:1.8;margin-bottom:14px">${desc}</div>`:''}
+      ${vid?`<div style="margin-top:8px">
+        <a href="${d.url}" target="_blank" style="display:inline-block;text-decoration:none;border-radius:10px;overflow:hidden;box-shadow:0 3px 16px rgba(0,0,0,.2);position:relative">
+          <img src="${thumbUrl}" alt="${d.name}" width="340" style="display:block;border-radius:10px"/>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)">
+            <div style="width:56px;height:56px;background:#cc0000;border-radius:12px;display:flex;align-items:center;justify-content:center">
+              <span style="color:#fff;font-size:24px;line-height:1;margin-left:4px">&#9658;</span>
+            </div>
+          </div>
+        </a>
+        <div style="margin-top:8px">
+          <a href="${d.url}" target="_blank" style="color:#cc0000;font-weight:700;font-size:13px;text-decoration:none">
+            &#9658; Watch on YouTube &rarr;
+          </a>
+          <div style="font-size:11px;color:#999;margin-top:2px">${d.url}</div>
+        </div>
+      </div>`:''}
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid #eee;margin:24px 0"/>');
+
+  // Assessment table HTML
+  const assessHtml=assessRows.length?`
+    <div style="background:#f8f8f8;border-radius:10px;padding:18px 20px;margin-bottom:28px">
+      <div style="font-weight:800;font-size:14px;color:#1a1a1a;margin-bottom:12px">📊 Latest Assessment Results</div>
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        ${assessRows.map(r=>`<tr style="border-bottom:1px solid #eee">
+          <td style="padding:7px 0;color:#555">${r.label}</td>
+          <td style="padding:7px 0;font-weight:800;color:#f0a500;text-align:right">${r.value} ${r.unit}</td>
+          <td style="padding:7px 0;color:#aaa;font-size:11px;text-align:right;padding-left:12px">${r.date}</td>
+        </tr>`).join('')}
+      </table>
+    </div>`:'';
+
+  // Skills section
+  const skillsHtml=skills.length?`
+    <div style="margin-bottom:28px">
+      <div style="font-weight:800;font-size:14px;color:#1a1a1a;margin-bottom:10px">🎯 What We Are Working On</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px">
+        ${skills.map(s=>`<span style="background:#f0a50022;border:1px solid #f0a50055;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;color:#b07800;display:inline-block">${s}</span>`).join('')}
+      </div>
+    </div>`:'';
+
+  const htmlBody=`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Softball Homework: ${p.name}</title>
+</head>
+<body style="font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px 20px;color:#1a1a1a;background:#fff">
+
+  <!-- Header -->
+  <div style="background:#0b0f1a;border-radius:14px;padding:22px 26px;margin-bottom:28px">
+    <div style="font-size:26px;font-weight:900;color:#f0a500;letter-spacing:2px;margin-bottom:4px">⚡ HAMR Softball Hub</div>
+    <div style="color:#7b88a8;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.8px">HAMR Hawks &middot; 12U</div>
+  </div>
+
+  <!-- Intro -->
+  <h1 style="font-size:22px;font-weight:800;margin:0 0 8px">Homework for ${p.name} 🥎</h1>
+  <p style="color:#555;font-size:14px;line-height:1.8;margin:0 0 24px">
+    Hi ${p.name.split(' ')[0]}! We put together some drills specifically for you to work on in between practices.
+    You only need about <strong>10&ndash;15 minutes</strong> &mdash; watch the video first, then try it a few times.
+    Don&rsquo;t worry about being perfect. Focus on the cues and just go for it!
+  </p>
+
+  ${skillsHtml}
+  ${assessHtml}
+
+  <!-- Drill count badge -->
+  <div style="background:#f0a50011;border:1px solid #f0a50033;border-radius:8px;padding:10px 16px;margin-bottom:28px;font-size:13px;color:#b07800;font-weight:700">
+    📋 ${hwDrills.length} drill${hwDrills.length!==1?'s':''} in your homework plan
+  </div>
+
+  <!-- Drills -->
+  ${drillRows}
+
+  <!-- Footer -->
+  <div style="margin-top:36px;padding-top:16px;border-top:2px solid #f0a500;text-align:center">
+    <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:4px">Coach &mdash; HAMR Hawks 12U</div>
+    <div style="font-size:11px;color:#aaa">Generated by ⚡ HAMR Softball Hub</div>
+  </div>
+
+</body>
+</html>`;
+
+  // Stamp lastSent date on the player's skill entry
+  const psStamp=DB.playerSkills||[];
+  const stampIdx=psStamp.findIndex(e=>e.playerId===pid);
+  if(stampIdx>=0) psStamp[stampIdx].lastSent=new Date().toISOString().slice(0,10);
+  DB.playerSkills=psStamp;scheduleSave();
+
+  // Open HTML in a new tab so they can copy/paste into Gmail
+  const blob=new Blob([htmlBody],{type:'text/html;charset=utf-8'});
+  const blobUrl=URL.createObjectURL(blob);
+
+  // Open Gmail compose with subject pre-filled
+  const gmailSubject=encodeURIComponent('Softball Homework: '+p.name);
+  const gmailUrl=`https://mail.google.com/mail/?view=cm&su=${gmailSubject}`;
+
+  // Open the rendered HTML in a new tab for copying
+  const previewTab=window.open(blobUrl,'_blank');
+
+  // Open Gmail compose
+  setTimeout(()=>window.open(gmailUrl,'_blank'),400);
+
+  showModal(`<div class="mhdr"><h3>✉ Sending via Gmail</h3><button class="xbtn" onclick="closeModal()">×</button></div>
+    <div class="col">
+      <div style="font-size:14px;line-height:1.9;color:var(--text)">
+        Two tabs just opened:<br/>
+        <strong>Tab 1</strong> — the formatted homework email (fully rendered)<br/>
+        <strong>Tab 2</strong> — Gmail compose with the subject pre-filled
+      </div>
+      <div class="surface" style="font-size:13px;line-height:2;color:var(--muted)">
+        <strong style="color:var(--gold)">To send with full formatting:</strong><br/>
+        1. In Tab 1 — select all (Ctrl+A / Cmd+A) → copy (Ctrl+C / Cmd+C)<br/>
+        2. Switch to Tab 2 (Gmail) → click in the message body → paste (Ctrl+V / Cmd+V)<br/>
+        3. Add the parent's email address → Send<br/><br/>
+        Gmail will preserve all the formatting, thumbnails, and clickable video links.
+      </div>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-gold" onclick="closeModal()">Got it</button>
+        <button class="btn btn-dim" onclick="window.open('${gmailUrl}','_blank')">Open Gmail Again</button>
+      </div>
+    </div>`);
+}
+
+// ═══ DEVELOPMENT ═════════════════════════════════════════
+let _devM='homeToFirst',_devPid='';
+let _SW={on:false,metric:null,pid:'',elapsed:0,start:0,saved:null,log:[],raf:null};
+
+function renderDev(){
+  const el=document.getElementById('main');if(!el)return;
+  const mdef=METRIC_TYPES.find(m=>m.key===_devM)||METRIC_TYPES[0];
+  const lb=DB.players.map(p=>{
+    const ents=DB.metrics.filter(m=>m.playerId===p.id&&m.metricKey===_devM).sort((a,b)=>b.date.localeCompare(a.date));
+    const lat=ents[0]||null,prev=ents[1]||null;
+    return{p,lat,delta:(lat&&prev)?lat.value-prev.value:null,cnt:ents.length};
+  }).sort((a,b)=>{if(!a.lat&&!b.lat)return 0;if(!a.lat)return 1;if(!b.lat)return-1;return mdef.lowerBetter?a.lat.value-b.lat.value:b.lat.value-a.lat.value;});
+  const selEnts=DB.metrics.filter(m=>m.playerId===_devPid&&m.metricKey===_devM).sort((a,b)=>b.date.localeCompare(a.date));
+  const selP=DB.players.find(p=>p.id===_devPid);
+  const mbtns=METRIC_TYPES.map(m=>`<button class="tog${_devM===m.key?' on':''}" onclick="_devM='${m.key}';renderDev()">${m.label}</button>`).join('');
+  const timed=METRIC_TYPES.filter(m=>m.lowerBetter);
+  const manual=METRIC_TYPES.filter(m=>!m.lowerBetter);
+  const swbtns=timed.map(m=>`<button class="btn btn-dim btn-sm" onclick="openSW('${m.key}')">⏱ ${m.label}</button>`).join('');
+  const mbtns2=manual.map(m=>`<button class="btn btn-dim btn-sm" style="color:var(--muted)" onclick="openManual('${m.key}')">📝 ${m.label}</button>`).join('');
+  const lbRows=lb.map((row,i)=>{
+    const on=row.p.id===_devPid;
+    const dc=row.delta===null?'':(mdef.lowerBetter?row.delta<0:row.delta>0)?'var(--green)':'var(--red)';
+    return `<div onclick="_devPid='${row.p.id}';renderDev()" style="display:flex;align-items:center;gap:8px;padding:9px;border-radius:8px;cursor:pointer;margin-bottom:4px;background:${on?'var(--gold)22':'transparent'};border:1px solid ${on?'var(--gold)44':'transparent'};transition:.1s">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:${i===0&&row.lat?'var(--gold)':'var(--muted)'};min-width:22px;text-align:center">${row.lat?i+1:'—'}</div>
+      <div class="f1"><div style="font-weight:600;font-size:13px">#${esc(row.p.number||'—')} ${esc(row.p.name)}</div><div style="font-size:10px;color:var(--muted)">${row.cnt} measurements</div></div>
+      <div style="text-align:right">${row.lat?`<div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--gold);line-height:1">${row.lat.value}<span style="font-size:11px;font-weight:400"> ${mdef.unit}</span></div>${row.delta!==null?`<div style="font-size:10px;color:${dc}">${row.delta>0?'+':''}${row.delta.toFixed(2)}</div>`:''}`:'<div style="color:var(--dim);font-size:11px">No data</div>'}</div>
+    </div>`;
+  }).join('');
+  const histRows=selEnts.map(m=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px">
+    <span style="color:var(--muted);min-width:78px">${m.date}</span>
+    <span style="font-weight:700;color:var(--gold)">${m.value} ${mdef.unit}</span>
+    ${m.notes?`<span style="color:var(--muted);f1:1;font-size:11px">${esc(m.notes)}</span>`:''}
+    <button class="btn btn-red btn-xs" onclick="delMetric('${m.id}')">✕</button>
+  </div>`).join('');
+
+  el.innerHTML=`<div class="row" style="margin-bottom:18px"><h2 class="st">📈 Player Development</h2><div class="f1"></div>${DB.players.length?`<button class="btn btn-gold" onclick="openManual('')">+ Log Manual</button>`:''}</div>
+  <div class="surface" style="margin-bottom:14px">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700">⏱ Stopwatch (tap to launch):</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${swbtns}</div>
+    <div style="font-size:12px;color:var(--muted);margin:10px 0 8px;font-weight:700">📝 Manual Entry (Pocket Radar):</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${mbtns2}</div>
+  </div>
+  <div class="lbl" style="margin-bottom:6px">View by Metric</div>
+  <div class="row" style="gap:5px;margin-bottom:16px;flex-wrap:wrap">${mbtns}</div>
+  <div class="grid2">
+    <div class="card"><div style="font-weight:700;margin-bottom:12px;font-size:14px">${mdef.label} — Leaderboard</div>
+      ${DB.players.length?lbRows:'<div style="color:var(--muted);font-size:12px">Add players first.</div>'}
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="font-weight:700;margin-bottom:10px;font-size:13px">${selP?`Progress: ${selP.name}`:'Select a player →'}</div>
+        <div class="chart-wrap"><canvas id="dev-chart"></canvas></div>
+      </div>
+      ${_devPid?`<div class="card"><div style="font-weight:700;margin-bottom:8px;font-size:13px">History</div>
+        ${selEnts.length?'':'<div style="color:var(--muted);font-size:12px">No entries yet.</div>'}
+        <div style="max-height:200px;overflow-y:auto">${histRows}</div>
+      </div>`:''}
+    </div>
+  </div>`;
+  setTimeout(drawChart,30);
+}
+function drawChart(){
+  const canvas=document.getElementById('dev-chart');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const mdef=METRIC_TYPES.find(m=>m.key===_devM);
+  const ents=DB.metrics.filter(m=>m.playerId===_devPid&&m.metricKey===_devM).sort((a,b)=>a.date.localeCompare(b.date));
+  const W=canvas.offsetWidth||380,H=180;
+  canvas.width=W;canvas.height=H;ctx.clearRect(0,0,W,H);
+  if(ents.length<2){ctx.fillStyle='#7b88a8';ctx.font='13px DM Sans';ctx.textAlign='center';ctx.fillText(_devPid?'Need 2+ data points to show chart':'Select a player on the left',W/2,H/2);return;}
+  const vals=ents.map(e=>e.value),dates=ents.map(e=>e.date.slice(5));
+  const mn=Math.min(...vals),mx=Math.max(...vals),rng=mx-mn||1;
+  const P={t:16,r:12,b:32,l:42},cw=W-P.l-P.r,ch=H-P.t-P.b;
+  const px=i=>P.l+(i/(ents.length-1))*cw,py=v=>P.t+ch-((v-mn)/rng)*ch;
+  ctx.strokeStyle='#2b3454';ctx.lineWidth=1;
+  [0,.25,.5,.75,1].forEach(f=>{const y=P.t+ch*f;ctx.beginPath();ctx.moveTo(P.l,y);ctx.lineTo(W-P.r,y);ctx.stroke();ctx.fillStyle='#7b88a8';ctx.font='10px DM Sans';ctx.textAlign='right';ctx.fillText((mn+rng*(1-f)).toFixed(1),P.l-3,y+3);});
+  ctx.fillStyle='#7b88a8';ctx.font='10px DM Sans';ctx.textAlign='center';
+  ents.forEach((_,i)=>{if(i===0||i===ents.length-1)ctx.fillText(dates[i],px(i),H-5);});
+  ctx.strokeStyle='#f0a500';ctx.lineWidth=2.5;ctx.lineJoin='round';
+  ctx.beginPath();ents.forEach((e,i)=>{i===0?ctx.moveTo(px(i),py(e.value)):ctx.lineTo(px(i),py(e.value));});ctx.stroke();
+  ents.forEach((e,i)=>{ctx.beginPath();ctx.arc(px(i),py(e.value),4,0,Math.PI*2);ctx.fillStyle='#f0a500';ctx.fill();});
+}
+function delMetric(id){DB.metrics=DB.metrics.filter(m=>m.id!==id);scheduleSave();renderDev();}
+
+function openManual(mk){
+  const mOpts=METRIC_TYPES.map(m=>`<option value="${m.key}"${m.key===mk?' selected':''}>${m.label} (${m.unit})</option>`).join('');
+  const pOpts=DB.players.map(p=>`<option value="${p.id}"${p.id===_devPid?' selected':''}>#${esc(p.number||'—')} ${esc(p.name)}</option>`).join('');
+  showModal(`${mhdr('Log Measurement')}
+    <div class="col">
+      <div><div class="lbl">Player</div><select id="m-p">${pOpts}</select></div>
+      <div><div class="lbl">Metric</div><select id="m-m">${mOpts}</select></div>
+      <div class="row" style="gap:10px">
+        <div class="f1"><div class="lbl">Value</div><input type="number" id="m-v" placeholder="0.00" step="0.01"/></div>
+        <div style="width:155px"><div class="lbl">Date</div><input type="date" id="m-d" value="${new Date().toISOString().slice(0,10)}"/></div>
+      </div>
+      <div><div class="lbl">Notes (optional)</div><input id="m-n" placeholder="Pocket Radar, wind, conditions…"/></div>
+      <div class="row">
+        <button class="btn btn-gold" onclick="saveManual()">Save</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`);
+}
+function saveManual(){
+  const pid=document.getElementById('m-p').value,mk=document.getElementById('m-m').value;
+  const val=parseFloat(document.getElementById('m-v').value),date=document.getElementById('m-d').value;
+  if(!pid||isNaN(val)||!date)return;
+  DB.metrics.push({id:uid(),playerId:pid,metricKey:mk,value:val,date,notes:document.getElementById('m-n').value.trim()});
+  closeModal();scheduleSave();renderDev();
+}
+
+// ── STOPWATCH ──────────────────────────────────────────
+function openSW(mk){
+  _SW={on:false,metric:mk,pid:DB.players[0]?.id||'',elapsed:0,start:0,saved:null,log:[],raf:null};
+  showSW();
+}
+function showSW(){
+  const mdef=METRIC_TYPES.find(m=>m.key===_SW.metric)||METRIC_TYPES[0];
+  const s=Math.floor(_SW.elapsed/1000),ms=Math.floor((_SW.elapsed%1000)/10);
+  const t=`${s}.${String(ms).padStart(2,'0')}`;
+  const tcol=_SW.on?'var(--green)':_SW.saved!==null?'var(--gold)':'var(--text)';
+  const chips=DB.players.map(p=>`<div class="pchip${p.id===_SW.pid?' on':''}" onclick="${_SW.on?'':`_SW.pid='${p.id}';showSW()`}">
+    <div style="font-size:10px;color:${p.id===_SW.pid?'#000':'var(--muted)'}">#${esc(p.number||'—')}</div>
+    <div>${esc(p.name.split(' ')[0])}</div>
+  </div>`).join('');
+  const logHtml=_SW.log.length?`<div class="surface" style="width:100%">
+    <div class="lbl" style="margin-bottom:8px">✓ Saved this session (${_SW.log.length})</div>
+    ${_SW.log.map(e=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;font-weight:600">${esc(e.name)}</span>
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--green)">${e.s}s</span>
+    </div>`).join('')}
+  </div>`:'';
+  showModal(`${mhdr('⏱ '+mdef.label)}
+    <div class="col" style="align-items:center">
+      <div style="width:100%">
+        <div class="lbl" style="margin-bottom:6px">Player</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:6px">${chips}</div>
+      </div>
+      <div class="sw-time" style="color:${tcol}">${t}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:-8px">seconds</div>
+      <button class="sw-btn" onclick="swToggle()" style="background:${_SW.on?'var(--red)':'var(--green)'};color:#000;box-shadow:0 0 24px ${_SW.on?'var(--red)':'var(--green)'}66">${_SW.on?'STOP':'GO!'}</button>
+      <div class="row" style="gap:10px">
+        <button class="btn btn-dim" onclick="swReset()">↺ Reset</button>
+        ${_SW.saved!==null?`<span style="font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--gold)">${_SW.saved}s</span><button class="btn btn-gold" onclick="swSave()">✓ Save</button>`:''}
+      </div>
+      ${_SW.saved!==null?`<div style="font-size:11px;color:var(--muted);text-align:center">Hit ↺ Reset to time the next player</div>`:''}
+      ${logHtml}
+    </div>`);
+}
+function swTick(){
+  _SW.elapsed=Date.now()-_SW.start;
+  const s=Math.floor(_SW.elapsed/1000),ms=Math.floor((_SW.elapsed%1000)/10);
+  const el=document.querySelector('.sw-time');
+  if(el)el.textContent=`${s}.${String(ms).padStart(2,'0')}`;
+  if(_SW.on)_SW.raf=requestAnimationFrame(swTick);
+}
+function swToggle(){
+  if(_SW.on){cancelAnimationFrame(_SW.raf);_SW.on=false;_SW.saved=parseFloat((_SW.elapsed/1000).toFixed(2));}
+  else{_SW.saved=null;_SW.start=Date.now()-_SW.elapsed;_SW.on=true;_SW.raf=requestAnimationFrame(swTick);}
+  showSW();
+}
+function swReset(){cancelAnimationFrame(_SW.raf);_SW.on=false;_SW.elapsed=0;_SW.saved=null;showSW();}
+function swSave(){
+  if(_SW.saved===null)return;
+  const p=DB.players.find(x=>x.id===_SW.pid);
+  DB.metrics.push({id:uid(),playerId:_SW.pid,metricKey:_SW.metric,value:_SW.saved,date:new Date().toISOString().slice(0,10),notes:'Stopwatch'});
+  _SW.log=[{name:p?.name.split(' ')[0]||'?',s:_SW.saved},..._SW.log];
+  scheduleSave();swReset();
+}
+
+// ═══ LINEUPS ══════════════════════════════════════════════
+let EG=null;
+function renderLineups(){
+  const sorted=[...DB.games].sort((a,b)=>b.date.localeCompare(a.date));
+  const rows=sorted.length===0?'<div class="empty">No games logged yet.</div>':
+    sorted.map(g=>{
+      const active=(g.lineup||[]).filter(e=>parseInt(e.inningsPlayed)>0);
+      const s=[...active].sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
+      const chips=s.map(e=>{const p=getPlayer(e.playerId);return p?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;display:flex;gap:4px;align-items:center"><span style="color:var(--gold);font-weight:800">${e.battingSpot||'—'}.</span><span style="font-weight:600">${esc(p.name.split(' ')[0])}</span>${e.positions?.length?`<span style="color:var(--muted)">[${e.positions.join(',')}]</span>`:''}<span style="color:var(--muted)">(${e.inningsPlayed})</span></div>`:''}).join('');
+      return `<div class="card" style="margin-bottom:10px">
+        <div class="row" style="margin-bottom:8px">
+          <div class="f1"><div style="font-weight:700;font-size:15px">vs ${esc(g.opponent||'TBD')}</div>
+            <div class="row" style="margin-top:4px;gap:5px">
+              <span class="badge" style="background:var(--dim);color:var(--muted)">${g.date}</span>
+              <span class="badge" style="background:var(--dim);color:var(--muted)">${g.innings} inn.</span>
+              <span class="badge" style="background:var(--green)22;color:var(--green)">${active.length} players</span>
+            </div>
+          </div>
+          <div class="row" style="gap:6px">
+            <button class="btn btn-dim btn-sm" onclick="editGame('${g.id}')">Edit</button>
+            <button class="btn btn-red btn-sm" onclick="delGame('${g.id}')">✕</button>
+          </div>
+        </div>
+        <div class="row" style="gap:4px;flex-wrap:wrap">${chips}</div>
+      </div>`;
+    }).join('');
+  return `<div class="row" style="margin-bottom:18px"><h2 class="st">⚾ Lineup Tracker</h2><div class="f1"></div>${DB.games.length?`<button class="btn btn-blue btn-sm" onclick="showPT()">📊 Playing Time</button>`:''}&nbsp;<button class="btn btn-gold" onclick="editGame(null)">+ New Game</button></div>${rows}`;
+}
+function editGame(id){
+  const isNew=!id;
+  if(isNew){EG={id:uid(),date:new Date().toISOString().slice(0,10),opponent:'',innings:6,lineup:DB.players.map(p=>({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0}))};}
+  else{EG=JSON.parse(JSON.stringify(DB.games.find(g=>g.id===id)));const ids=new Set(EG.lineup.map(l=>l.playerId));DB.players.filter(p=>!ids.has(p.id)).forEach(p=>EG.lineup.push({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0}));}
+  const rows=EG.lineup.map(ent=>{
+    const p=getPlayer(ent.playerId);if(!p)return'';
+    const bOpts=`<option value="">—</option>${Array.from({length:12},(_,i)=>`<option value="${i+1}"${ent.battingSpot===i+1?' selected':''}>${i+1}</option>`).join('')}`;
+    const pbtn=POSITIONS.map(pos=>`<button type="button" class="tog btn-xs${(ent.positions||[]).includes(pos)?' on':''}" onclick="tglGPos('${ent.playerId}','${pos}',this)">${pos}</button>`).join('');
+    return `<tr><td style="padding:6px 8px;font-weight:600;white-space:nowrap">#${esc(p.number||'—')} ${esc(p.name)}</td>
+      <td style="padding:6px 8px"><select style="width:60px" onchange="updGL('${ent.playerId}','battingSpot',parseInt(this.value)||0)">${bOpts}</select></td>
+      <td style="padding:6px 8px"><input type="number" value="${ent.inningsPlayed||''}" placeholder="0" style="width:55px;text-align:center" min="0" onchange="updGL('${ent.playerId}','inningsPlayed',parseInt(this.value)||0)"/></td>
+      <td style="padding:6px 8px"><div class="row" style="gap:3px;flex-wrap:wrap">${pbtn}</div></td>
+    </tr>`;
+  }).join('');
+  showModal(`${mhdr(isNew?'New Game':'Edit Game')}
+    <div class="col">
+      <div class="row" style="gap:8px">
+        <div class="f1"><div class="lbl">Opponent</div><input id="g-opp" value="${esc(EG.opponent)}" placeholder="Team name" onchange="EG.opponent=this.value"/></div>
+        <div><div class="lbl">Date</div><input type="date" id="g-date" value="${EG.date}" style="width:155px" onchange="EG.date=this.value"/></div>
+      </div>
+      <div><div class="lbl">Innings</div><select style="width:120px" onchange="EG.innings=parseInt(this.value)">${[4,5,6,7].map(n=>`<option value="${n}"${EG.innings===n?' selected':''}>${n}</option>`).join('')}</select></div>
+      <div style="overflow-x:auto"><table><thead><tr><th>Player</th><th>Bat #</th><th>Innings</th><th>Positions</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="row">
+        <button class="btn btn-gold" onclick="saveGame(${isNew})">Save Game</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`,true);
+}
+function updGL(pid,f,v){if(EG){const e=EG.lineup.find(x=>x.playerId===pid);if(e)e[f]=v;}}
+function tglGPos(pid,pos,btn){if(!EG)return;const e=EG.lineup.find(x=>x.playerId===pid);if(!e)return;e.positions=e.positions.includes(pos)?e.positions.filter(p=>p!==pos):[...e.positions,pos];btn.classList.toggle('on');}
+function saveGame(isNew){if(!EG)return;if(isNew)DB.games.push(EG);else{const i=DB.games.findIndex(g=>g.id===EG.id);if(i>=0)DB.games[i]=EG;}closeModal();scheduleSave();renderTab();updateCounts();}
+function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();renderTab();updateCounts();}
+function showPT(){
+  const rep=DB.players.map(p=>{
+    const totI=DB.games.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(parseInt(e?.inningsPlayed)||0);},0);
+    const gP=DB.games.filter(g=>(parseInt(g.lineup?.find(l=>l.playerId===p.id)?.inningsPlayed)||0)>0).length;
+    const pc={};const bs=[];
+    DB.games.forEach(g=>{const e=g.lineup?.find(l=>l.playerId===p.id);if(e){(e.positions||[]).forEach(pos=>{pc[pos]=(pc[pos]||0)+1;});if(e.battingSpot>0)bs.push(e.battingSpot);}});
+    return{p,totI,gP,pc,avgB:bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1):'—'};
+  }).sort((a,b)=>b.totI-a.totI);
+  const maxI=DB.games.reduce((s,g)=>s+(g.innings||6),0);
+  const rows=rep.map(r=>{
+    const pct=maxI>0?Math.round((r.totI/maxI)*100):0;
+    const col=pct<50?'var(--red)':pct<75?'var(--gold)':'var(--green)';
+    return `<tr><td style="padding:8px 10px;font-weight:700">#${esc(r.p.number||'—')} ${esc(r.p.name)}</td>
+      <td style="padding:8px 10px;color:var(--muted)">${r.gP}</td>
+      <td style="padding:8px 10px"><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;color:${col}">${r.totI}</span>
+        <div style="display:inline-block;vertical-align:middle;margin-left:8px;background:var(--surface);border-radius:3px;height:5px;width:60px">
+          <div style="background:${col};height:100%;border-radius:3px;width:${Math.min(pct,100)}%"></div>
+        </div> <span style="font-size:10px;color:var(--muted)">${pct}%</span>
+      </td>
+      <td style="padding:8px 10px;color:var(--muted)">${r.avgB}</td>
+      <td style="padding:8px 10px">${Object.entries(r.pc).map(([p,c])=>`<span class="badge" style="background:var(--green)22;color:var(--green);font-size:10px">${p}×${c}</span>`).join(' ')||'—'}</td>
+    </tr>`;
+  }).join('');
+  showModal(`${mhdr('📊 Playing Time Report')}<div style="overflow-x:auto"><table><thead><tr><th>Player</th><th>Games</th><th>Total Inn.</th><th>Avg Bat</th><th>Positions</th></tr></thead><tbody>${rows}</tbody></table></div>`,true);
+}
+
+// ═══ STATS ═══════════════════════════════════════════════
+function renderStats(){
+  const all=DB.gcStats||[];
+  const cols=all.length?Object.keys(all[0]).filter(k=>!k.startsWith('_')):[];
+  const KEY=['AB','R','H','2B','3B','HR','RBI','BB','K','SB','AVG','OBP','SLG','OPS'];
+  const disp=KEY.filter(k=>cols.includes(k)).length?KEY.filter(k=>cols.includes(k)):cols.slice(0,10);
+  const isKey=k=>['AVG','OBP','SLG','OPS'].includes(k);
+  const groups=DB.players.map(p=>({p,rows:all.filter(r=>r._playerId===p.id)})).filter(x=>x.rows.length>0);
+  const unmatched=all.filter(r=>!r._playerId);
+  const tables=groups.map(({p,rows})=>`<div class="card" style="margin-bottom:14px">
+    <div style="font-weight:700;font-size:14px;margin-bottom:10px">#${esc(p.number||'—')} ${esc(p.name)}</div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr><th>Label</th><th>Date</th>${disp.map(k=>`<th style="color:${isKey(k)?'var(--gold)':'var(--muted)'}">${k}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map(r=>`<tr><td style="color:var(--muted);white-space:nowrap">${esc(r._label||'')}</td><td style="color:var(--muted);white-space:nowrap">${esc(r._date||'')}</td>${disp.map(k=>`<td style="text-align:center;font-weight:${isKey(k)?700:400};color:${isKey(k)?'var(--gold)':'var(--text)'}">${r[k]||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>
+  </div>`).join('');
+  return `<div class="row" style="margin-bottom:18px"><h2 class="st">📊 Stats</h2><div class="f1"></div>
+    <button class="btn btn-gold" onclick="showStatsImport()">📥 Import GameChanger CSV</button>
+  </div>
+  ${all.length===0?'<div class="empty">No stats imported yet. Export from GameChanger and import the CSV.</div>':''}
+  ${tables}
+  ${unmatched.length?`<div class="card"><div style="font-weight:700;margin-bottom:8px;color:var(--muted)">⚠ ${unmatched.length} rows not matched to a roster player</div>
+    <div style="overflow-x:auto"><table><thead><tr><th>Name</th>${disp.map(k=>`<th>${k}</th>`).join('')}</tr></thead>
+    <tbody>${unmatched.map(r=>`<tr><td style="font-weight:600">${esc(r['Player Name']||r['Name']||'?')}</td>${disp.map(k=>`<td style="text-align:center">${r[k]||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div></div>`:''}`;
+}
+function showStatsImport(){
+  showModal(`${mhdr('📥 Import GameChanger Stats CSV')}
+    <div class="col">
+      <div class="surface tip">Export from GameChanger: Team → Stats → Export CSV</div>
+      <div><div class="lbl">Label (e.g. "Week 3", "vs Tigers")</div><input id="s-lbl" placeholder="Season Totals"/></div>
+      <div><div class="lbl">Date</div><input type="date" id="s-dt" value="${new Date().toISOString().slice(0,10)}"/></div>
+      <div><div class="lbl">CSV File</div><input type="file" accept=".csv,.txt" onchange="handleStatsCSV(this)"/></div>
+      <div id="stats-preview"></div>
+    </div>`);
+}
+function handleStatsCSV(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const rows=parseCSV(ev.target.result);
+    const lbl=document.getElementById('s-lbl').value||'Import';
+    const dt=document.getElementById('s-dt').value||new Date().toISOString().slice(0,10);
+    const mapped=rows.map(row=>{
+      const rawName=(row['Player Name']||row['Name']||row['Player']||'').trim();
+      const matched=DB.players.find(p=>p.name.toLowerCase()===rawName.toLowerCase()||p.name.toLowerCase().split(' ')[0]===rawName.toLowerCase().split(' ')[0]);
+      return{...row,_playerId:matched?.id||null,_label:lbl,_date:dt};
+    });
+    document.getElementById('stats-preview').innerHTML=`
+      <div style="color:var(--green);font-weight:700;margin-bottom:8px">${mapped.length} rows parsed — ${mapped.filter(r=>r._playerId).length} matched to roster</div>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-gold" onclick="confirmStats(${JSON.stringify(mapped).replace(/'/g,'&#39;').replace(/\//g,'&#47;')})">✓ Import</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>`;
+  };
+  reader.readAsText(file);input.value='';
+}
+function confirmStats(rows){DB.gcStats=[...(DB.gcStats||[]),...rows];closeModal();scheduleSave();renderTab();}
+
+// ═══ INIT ═════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  renderSetup();
+  if(gistId&&ghToken){
+    gistLoad(gistId,ghToken).then(data=>{
+      DB=data;
+      document.getElementById('setup').style.display='none';
+      document.getElementById('app').classList.remove('hidden');
+      updateCounts();renderTab();
+    }).catch(()=>{
+      _step=3;renderSetup();
+    });
+  }
+});
+</script>
+</body>
+</html>
