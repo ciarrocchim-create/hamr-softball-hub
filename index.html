@@ -113,6 +113,10 @@ canvas{display:block;width:100%!important}
 
 /* ── Plan items ── */
 .plan-item{background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:12px;margin-bottom:8px}
+.plan-item.dragging,.sblock.dragging{opacity:.4;border:2px dashed var(--gold)}
+.plan-item.drag-over,.sblock.drag-over{border-color:var(--gold);background:var(--gold)11;transform:scale(1.01)}
+.drag-handle{cursor:grab;color:var(--muted);font-size:18px;padding:0 4px;user-select:none;touch-action:none}
+.drag-handle:active{cursor:grabbing}
 .sblock{background:#131e30;border:2px solid var(--blue);border-radius:10px;padding:14px;margin-bottom:10px}
 .sgrid{display:grid;gap:8px}
 .scell{background:var(--surface);border-radius:8px;padding:10px;border:1px solid #5b8af533}
@@ -339,6 +343,8 @@ const METRIC_TYPES = [
 // ═══ CONSTANTS ═══════════════════════════════════════════
 const POSITIONS=['P','C','1B','2B','3B','SS','LF','CF','RF','DP','FLEX','EH'];
 const DRILL_CATS=['Hitting','Pitching','Fielding','Catching','Baserunning','Conditioning','Other'];
+const DRILL_TYPES=['Drill','Tip','Warmup','Progression'];
+const TYPE_COLOR={'Drill':'#5b8af5','Tip':'#c97af5','Warmup':'#3ddc84','Progression':'#f5a05b'};
 const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catching:'#c97af5',Baserunning:'#f5a05b',Conditioning:'#f16b6b',Other:'#7b88a8'};
 const GIST_ID_KEY='sh_gist_id';
 const GH_TOKEN_KEY='sh_gh_token';
@@ -674,13 +680,14 @@ function confirmCSV(players){
 }
 
 // ═══ DRILLS ══════════════════════════════════════════════
-let DF={cat:'All',name:'',tag:''};
+let DF={cat:'All',name:'',tag:'',type:''};
 function renderDrills(){
   const tagCounts={};
   DB.drills.forEach(d=>(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean).forEach(t=>{tagCounts[t]=(tagCounts[t]||0)+1;}));
   const topTags=Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]).slice(0,18).map(([t])=>t);
   const filtered=DB.drills.filter(d=>{
     if(DF.cat!=='All'&&d.category!==DF.cat)return false;
+    if(DF.type&&(d.drillType||'Drill')!==DF.type)return false;
     if(DF.name){const q=DF.name.toLowerCase();if(!d.name.toLowerCase().includes(q)&&!(d.tags||'').toLowerCase().includes(q))return false;}
     if(DF.tag){const terms=DF.tag.toLowerCase().split(' ').filter(Boolean);const hay=(d.name+' '+(d.tags||'')+' '+(d.description||'')).toLowerCase();if(!terms.every(t=>hay.includes(t)))return false;}
     return true;
@@ -697,6 +704,7 @@ function renderDrills(){
           <div class="f1">
             <div style="font-weight:700;font-size:14px;margin-bottom:5px">${esc(d.name)}</div>
             <span class="badge" style="background:${cc}22;color:${cc};border:1px solid ${cc}55">${d.category}</span>
+            <span class="badge" style="background:${TYPE_COLOR[d.drillType||'Drill']}22;color:${TYPE_COLOR[d.drillType||'Drill']};border:1px solid ${TYPE_COLOR[d.drillType||'Drill']}44;font-size:10px">${d.drillType||'Drill'}</span>
           </div>
           <span style="font-size:18px;opacity:.8">${vid?'▶️':d.url?'🔗':'📋'}</span>
         </div>
@@ -720,8 +728,17 @@ function renderDrills(){
     <div class="row" style="gap:10px;margin-bottom:10px">
       <div class="f1"><div class="lbl">Search by Name / Skill</div><input value="${esc(DF.name)}" placeholder="e.g. casting, drop step, Everydays…" oninput="DF.name=this.value;renderDrillResults()"/></div>
     </div>
-    <div class="lbl" style="margin-bottom:6px">Category</div>
-    <div class="row" style="gap:5px;flex-wrap:wrap;margin-bottom:10px">${catBtns}</div>
+    <div class="row" style="gap:16px;margin-bottom:10px">
+      <div><div class="lbl" style="margin-bottom:5px">Category</div>
+        <div class="row" style="gap:4px;flex-wrap:wrap">${catBtns}</div>
+      </div>
+      <div><div class="lbl" style="margin-bottom:5px">Type</div>
+        <div class="row" style="gap:4px;flex-wrap:wrap">
+          <button class="tog${!DF.type?' on':''}" onclick="setDType('')">All</button>
+          ${DRILL_TYPES.map(t=>`<button class="tog${DF.type===t?' on':''}" onclick="setDType('${t}')" style="${DF.type===t?'':'color:'+TYPE_COLOR[t]}">${t}</button>`).join('')}
+        </div>
+      </div>
+    </div>
     <div class="lbl" style="margin-bottom:5px">Quick Skills</div>
     <div class="row" style="gap:4px;flex-wrap:wrap">${tagPills}</div>
   </div>
@@ -748,6 +765,7 @@ function renderDrillResults(){
           <div class="f1">
             <div style="font-weight:700;font-size:14px;margin-bottom:5px">${esc(d.name)}</div>
             <span class="badge" style="background:${cc}22;color:${cc};border:1px solid ${cc}55">${d.category}</span>
+            <span class="badge" style="background:${TYPE_COLOR[d.drillType||'Drill']}22;color:${TYPE_COLOR[d.drillType||'Drill']};border:1px solid ${TYPE_COLOR[d.drillType||'Drill']}44;font-size:10px">${d.drillType||'Drill'}</span>
           </div>
           <span style="font-size:18px;opacity:.8">${vid?'▶️':d.url?'🔗':'📋'}</span>
         </div>
@@ -769,7 +787,8 @@ function renderDrillResults(){
 }
 function setDCat(c){DF.cat=c;renderTab();}
 function setDTag(t){DF.tag=DF.tag===t?'':t;renderTab();}
-function clearDF(){DF={cat:'All',name:'',tag:''};renderTab();}
+function setDType(t){DF.type=t;renderTab();}
+function clearDF(){DF={cat:'All',name:'',tag:'',type:''};renderTab();}
 
 function viewDrill(id){
   const d=DB.drills.find(x=>x.id===id);if(!d)return;
@@ -777,6 +796,7 @@ function viewDrill(id){
   const vid=ytId(d.url);
   showModal(`${mhdr(d.name)}
     <span class="badge" style="background:${cc}22;color:${cc};border:1px solid ${cc}55;margin-bottom:14px;display:inline-block">${d.category}</span>
+    <span class="badge" style="background:${TYPE_COLOR[d.drillType||'Drill']}22;color:${TYPE_COLOR[d.drillType||'Drill']};border:1px solid ${TYPE_COLOR[d.drillType||'Drill']}44;margin-bottom:14px;margin-left:5px;display:inline-block">${d.drillType||'Drill'}</span>
     ${vid?`<a href="${esc(d.url)}" target="_blank" style="display:block;margin:10px 0;border-radius:10px;overflow:hidden;position:relative">
       <img src="https://img.youtube.com/vi/${vid}/hqdefault.jpg" style="width:100%;display:block" alt="thumbnail"/>
       <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">
@@ -793,24 +813,28 @@ function viewDrill(id){
     </div>`,true);
 }
 function editDrill(id){
-  const d=id?DB.drills.find(x=>x.id===id):{id:uid(),name:'',category:'Fielding',url:'',description:'',tags:''};
+  const d=id?DB.drills.find(x=>x.id===id):{id:uid(),name:'',category:'Fielding',drillType:'Drill',url:'',description:'',tags:''};
   const catOpts=DRILL_CATS.map(c=>`<option${d.category===c?' selected':''}>${c}</option>`).join('');
+  const typeOpts=DRILL_TYPES.map(t=>`<option${(d.drillType||'Drill')===t?' selected':''}>${t}</option>`).join('');
   showModal(`${mhdr(id?'Edit Drill':'New Drill')}
     <div class="col">
-      <div><div class="lbl">Drill Name</div><input id="dn" value="${esc(d.name)}" placeholder="Drill name"/></div>
-      <div><div class="lbl">Category</div><select id="dc">${catOpts}</select></div>
+      <div><div class="lbl">Name</div><input id="dn" value="${esc(d.name)}" placeholder="Drill name"/></div>
+      <div class="row" style="gap:10px">
+        <div class="f1"><div class="lbl">Category</div><select id="dc">${catOpts}</select></div>
+        <div style="width:150px"><div class="lbl">Type</div><select id="dty">${typeOpts}</select></div>
+      </div>
       <div><div class="lbl">URL (YouTube or link)</div><input id="du" value="${esc(d.url||'')}" placeholder="https://youtube.com/watch?v=…"/></div>
       <div><div class="lbl">Description / Coaching Cues</div><textarea id="dd" rows="5" placeholder="Setup, progressions, coaching cues…">${esc(d.description||'')}</textarea></div>
       <div><div class="lbl">Skills &amp; Tags (comma-separated)</div><input id="dt" value="${esc(d.tags||'')}" placeholder="footwork, casting, drop step, daily…"/></div>
       <div class="row">
-        <button class="btn btn-gold" onclick="saveDrill('${id||d.id}',${!id})">Save Drill</button>
+        <button class="btn btn-gold" onclick="saveDrill('${id||d.id}',${!id})">Save</button>
         <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
       </div>
     </div>`,true);
 }
 function saveDrill(id,isNew){
   const name=document.getElementById('dn').value.trim();if(!name)return;
-  const drill={id,name,category:document.getElementById('dc').value,url:document.getElementById('du').value.trim(),description:document.getElementById('dd').value.trim(),tags:document.getElementById('dt').value.trim()};
+  const drill={id,name,category:document.getElementById('dc').value,drillType:document.getElementById('dty').value,url:document.getElementById('du').value.trim(),description:document.getElementById('dd').value.trim(),tags:document.getElementById('dt').value.trim()};
   if(isNew)DB.drills.push(drill);else{const i=DB.drills.findIndex(d=>d.id===id);if(i>=0)DB.drills[i]=drill;}
   closeModal();scheduleSave();renderTab();updateCounts();
 }
@@ -902,14 +926,18 @@ function showPlanEditor(isNew){
           <button class="btn btn-red btn-xs" style="margin-top:8px" onclick="rmPI('${st.id}')">Remove station</button>
         </div>`;
       }).join('');
-      return `<div class="sblock">
+      return `<div class="sblock" id="dnd-${item.blockId}"
+        draggable="true"
+        ondragstart="onDragStart(event,'${item.blockId}',true)"
+        ondragend="onDragEnd(event)"
+        ondragover="onDragOver(event,'${item.blockId}',true)"
+        ondrop="onDrop(event,'${item.blockId}',true)">
         <div class="row" style="margin-bottom:10px;gap:6px">
+          <span class="drag-handle" title="Drag to reorder">⠿</span>
           <span style="background:var(--blue);color:#fff;border-radius:5px;padding:2px 10px;font-size:11px;font-weight:800">STATIONS</span>
           <span style="font-size:11px;color:var(--muted)">simultaneous</span>
           ${tstr}
           <div class="f1"></div>
-          <button class="btn btn-dim btn-xs" onclick="mvBlk('${item.blockId}',-1)">↑</button>
-          <button class="btn btn-dim btn-xs" onclick="mvBlk('${item.blockId}',1)">↓</button>
           <button class="btn btn-dim btn-xs" onclick="addSt('${item.blockId}')">+ Station</button>
           <button class="btn btn-red btn-xs" onclick="rmBlk('${item.blockId}')">✕ Block</button>
         </div>
@@ -920,15 +948,19 @@ function showPlanEditor(isNew){
       const d=item.drillId?getDrill(item.drillId):null;
       const cc=d?CAT_COLOR[d.category]||'#888':'#888';
       const tstr=ts[item.id]?`<span style="font-size:11px;color:var(--green);font-weight:700;background:var(--green)18;border:1px solid var(--green)44;border-radius:10px;padding:2px 7px">⏱ ${ts[item.id]}</span>`:'';
-      return `<div class="plan-item">
+      return `<div class="plan-item" id="dnd-${item.id}"
+        draggable="true"
+        ondragstart="onDragStart(event,'${item.id}',false)"
+        ondragend="onDragEnd(event)"
+        ondragover="onDragOver(event,'${item.id}',false)"
+        ondrop="onDrop(event,'${item.id}',false)">
         <div class="row" style="margin-bottom:8px;gap:6px">
+          <span class="drag-handle" title="Drag to reorder">⠿</span>
           <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold);line-height:1;min-width:24px">${ti}.</div>
           ${d?`<div style="font-weight:600;font-size:13px;f1:1;min-width:0">${esc(d.name)} <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span></div>`:
           `<input value="${esc(item.customName||'')}" placeholder="Activity name" style="flex:1;font-size:13px" onchange="updPI('${item.id}','customName',this.value)"/>`}
           ${tstr}
           <div class="f1"></div>
-          <button class="btn btn-dim btn-xs" onclick="mvPI('${item.id}',-1)">↑</button>
-          <button class="btn btn-dim btn-xs" onclick="mvPI('${item.id}',1)">↓</button>
           <button class="btn btn-red btn-xs" onclick="rmPI('${item.id}')">✕</button>
         </div>
         <div class="row" style="gap:8px">
@@ -1046,6 +1078,46 @@ function rmBlk(bid){if(!EP)return;EP.items=EP.items.filter(i=>i.blockId!==bid);s
 function rmPI(id){if(!EP)return;EP.items=EP.items.filter(i=>i.id!==id);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
 function updPI(id,f,v){if(!EP)return;const it=EP.items.find(i=>i.id===id);if(it){it[f]=v;if(f==='duration'){const ts=calcTS();document.querySelectorAll('[id^="ts-"]').forEach(e=>{const k=e.id.slice(3);if(ts[k])e.textContent='⏱ '+ts[k];});}}}
 function mvPI(id,dir){if(!EP)return;const a=EP.items;const i=a.findIndex(x=>x.id===id);const ni=i+dir;if(ni<0||ni>=a.length)return;[a[i],a[ni]]=[a[ni],a[i]];syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+
+// ── Drag and drop for plan items ──
+let _dragKey=null; // item.id or blockId being dragged
+let _dragIsBlock=false;
+function onDragStart(e,key,isBlock){
+  _dragKey=key;_dragIsBlock=isBlock;
+  e.dataTransfer.effectAllowed='move';
+  e.dataTransfer.setData('text/plain',key);
+  setTimeout(()=>{const el=document.getElementById('dnd-'+key);if(el)el.classList.add('dragging');},0);
+}
+function onDragEnd(e){
+  document.querySelectorAll('.dragging,.drag-over').forEach(el=>{el.classList.remove('dragging','drag-over');});
+  _dragKey=null;
+}
+function onDragOver(e,key,isBlock){
+  e.preventDefault();e.dataTransfer.dropEffect='move';
+  if(key===_dragKey)return;
+  document.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over'));
+  const el=document.getElementById('dnd-'+key);if(el)el.classList.add('drag-over');
+}
+function onDrop(e,targetKey,targetIsBlock){
+  e.preventDefault();
+  document.querySelectorAll('.dragging,.drag-over').forEach(el=>{el.classList.remove('dragging','drag-over');});
+  if(!_dragKey||_dragKey===targetKey||!EP)return;
+  syncEP();
+  // Build groups
+  const seen=new Set();const groups=[];
+  EP.items.forEach(item=>{
+    if(item.type==='station'){if(seen.has(item.blockId))return;seen.add(item.blockId);groups.push({key:item.blockId,isBlock:true,items:EP.items.filter(x=>x.blockId===item.blockId)});}
+    else groups.push({key:item.id,isBlock:false,items:[item]});
+  });
+  const fromIdx=groups.findIndex(g=>g.key===_dragKey);
+  const toIdx=groups.findIndex(g=>g.key===targetKey);
+  if(fromIdx<0||toIdx<0)return;
+  const moved=groups.splice(fromIdx,1)[0];
+  groups.splice(toIdx,0,moved);
+  EP.items=groups.flatMap(g=>g.items);
+  _dragKey=null;
+  rPE(!DB.plans.find(p=>p.id===EP.id));
+}
 function mvBlk(bid,dir){
   if(!EP)return;
   const seen=new Set();const groups=[];
@@ -1062,8 +1134,17 @@ function addSetupTask(){if(!EP)return;EP.setupTasks.push({task:'',coach:''});syn
 function rmSetupTask(i){if(!EP)return;EP.setupTasks.splice(i,1);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
 function savePlan(isNew){
   if(!EP)return;syncEP();
-  if(isNew)DB.plans.push(EP);else{const i=DB.plans.findIndex(p=>p.id===EP.id);if(i>=0)DB.plans[i]=EP;}
-  closeModal();scheduleSave();renderTab();
+  if(isNew){DB.plans.push(EP);}
+  else{const i=DB.plans.findIndex(p=>p.id===EP.id);if(i>=0)DB.plans[i]=EP;}
+  scheduleSave();
+  // Stay in editor — just show a save confirmation and re-render the editor
+  const wasNew=isNew;
+  showPlanEditor(false);
+  // Flash a saved indicator in the editor
+  setTimeout(()=>{
+    const btn=document.querySelector('[onclick^="savePlan"]');
+    if(btn){const orig=btn.textContent;btn.textContent='✓ Saved!';btn.style.background='var(--green)';btn.style.color='#000';setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.color='';},1800);}
+  },50);
 }
 
 // ── PLAN VIEW ──────────────────────────────────────────
@@ -1345,6 +1426,7 @@ function renderSkills(){
         <div class="f1"><div style="font-weight:700;font-size:13px">${esc(d.name)}</div>
           <div class="row" style="margin-top:4px;gap:5px">
             <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>
+            <span class="badge" style="background:${TYPE_COLOR[d.drillType||'Drill']}22;color:${TYPE_COLOR[d.drillType||'Drill']};font-size:10px">${d.drillType||'Drill'}</span>
             <span class="badge" style="background:${s>=3?'var(--green)':s>=2?'var(--gold)':'var(--dim)'}22;color:${s>=3?'var(--green)':s>=2?'var(--gold)':'var(--muted)'};font-size:10px">${s} skill${s!==1?'s':''} matched</span>
             ${vid?'<span class="badge" style="background:var(--red)22;color:var(--red);font-size:10px">📹 Video</span>':''}
           </div>
