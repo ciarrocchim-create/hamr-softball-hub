@@ -871,8 +871,8 @@ function renderPlans(){
     }).join('');
   return `<div class="row" style="margin-bottom:18px"><h2 class="st">📋 Practice Plans</h2><div class="f1"></div><button class="btn btn-gold" onclick="openNewPlan()">+ New Plan</button></div>${rows}`;
 }
-function openNewPlan(){EP={id:uid(),title:'',date:new Date().toISOString().slice(0,10),startTime:'',endTime:'',notes:'',setupTasks:[],items:[]};showPlanEditor(true);}
-function openPlanEdit(id){EP=JSON.parse(JSON.stringify(DB.plans.find(p=>p.id===id)));if(!EP.setupTasks)EP.setupTasks=[];showPlanEditor(false);}
+function openNewPlan(){EP={id:uid(),title:'',date:new Date().toISOString().slice(0,10),startTime:'',endTime:'',notes:'',setupTasks:[],coachTips:[],items:[]};showPlanEditor(true);}
+function openPlanEdit(id){EP=JSON.parse(JSON.stringify(DB.plans.find(p=>p.id===id)));if(!EP.setupTasks)EP.setupTasks=[];if(!EP.coachTips)EP.coachTips=[];showPlanEditor(false);}
 function dupPlan(id){
   const src=DB.plans.find(p=>p.id===id);
   const c=JSON.parse(JSON.stringify(src));
@@ -981,6 +981,48 @@ function showPlanEditor(isNew){
   </div>`;
 
   // Setup tasks
+  // Video tips available (drills with videos, type Tip)
+  const tipDrills=DB.drills.filter(d=>d.url&&ytId(d.url));
+  const tipOpts=tipDrills.map(d=>`<option value="${d.id}">${esc(d.name)} [${d.drillType||'Drill'}]</option>`).join('');
+
+  const coachTipsHtml=`<div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+    <div class="row" style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:14px">🎬 Coach Tips</div>
+      <div class="f1"></div>
+      <button class="btn btn-dim btn-xs" onclick="addCoachTip()">+ Add Video Tip</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Video drills/tips to watch before or during practice to prep your coaches for today's focus areas.</div>
+    ${(EP.coachTips||[]).length===0?'<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px">No coach tips yet.</div>':''}
+    ${(EP.coachTips||[]).map((tip,i)=>{
+      const d=tip.drillId?getDrill(tip.drillId):null;
+      const vid=d?ytId(d.url):null;
+      const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+      return `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px">
+        <div class="row" style="gap:8px;margin-bottom:8px">
+          <div class="f1">
+            ${d?`<div style="font-weight:700;font-size:13px">${esc(d.name)}</div>
+            <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>
+            ${d.drillType?`<span class="badge" style="background:${TYPE_COLOR[d.drillType]||'var(--dim)'}22;color:${TYPE_COLOR[d.drillType]||'var(--muted)'};font-size:10px;margin-left:3px">${d.drillType}</span>`:''}
+            `:`<div style="color:var(--muted);font-size:12px">No drill selected</div>`}
+          </div>
+          ${vid?`<a href="${d.url}" target="_blank" style="font-size:18px;text-decoration:none" title="Watch video">▶️</a>`:''}
+          <button class="btn btn-red btn-xs" onclick="rmCoachTip(${i})">✕</button>
+        </div>
+        <div class="row" style="gap:8px">
+          <div class="f1"><div class="lbl">Video / Drill</div>
+            <select style="width:100%;font-size:12px" onchange="updCoachTip(${i},'drillId',this.value||null)">
+              <option value="">— select a drill with video —</option>
+              ${tipOpts.replace(/selected/g,'').replace(`value="${tip.drillId||''}"`,`value="${tip.drillId||''}" selected`)}
+            </select>
+          </div>
+          <div style="width:160px"><div class="lbl">Note for Coaches</div>
+            <input value="${esc(tip.note||'')}" placeholder="What to focus on…" onchange="updCoachTip(${i},'note',this.value)"/>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
   const setupHtml=`<div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
     <div class="row" style="margin-bottom:10px">
       <div style="font-weight:700;font-size:14px">🔧 Pre-Practice Setup</div>
@@ -1010,6 +1052,7 @@ function showPlanEditor(isNew){
       </div>
       <div><div class="lbl">Theme / Notes</div><textarea id="pln" rows="2" placeholder="Goals, themes, focus for this practice…">${esc(EP.notes)}</textarea></div>
       ${setupHtml}
+      ${coachTipsHtml}
       <div style="border-top:1px solid var(--border);padding-top:14px">
         <div class="row" style="margin-bottom:10px">
           <div style="font-weight:700;font-size:14px">Activities</div>
@@ -1131,6 +1174,9 @@ function mvBlk(bid,dir){
   EP.items=groups.flat();syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));
 }
 function addSetupTask(){if(!EP)return;EP.setupTasks.push({task:'',coach:''});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function addCoachTip(){if(!EP)return;if(!EP.coachTips)EP.coachTips=[];EP.coachTips.push({drillId:null,note:''});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function rmCoachTip(i){if(!EP)return;EP.coachTips.splice(i,1);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function updCoachTip(i,field,val){if(!EP||!EP.coachTips)return;EP.coachTips[i][field]=val;}
 function rmSetupTask(i){if(!EP)return;EP.setupTasks.splice(i,1);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
 function savePlan(isNew){
   if(!EP)return;syncEP();
@@ -1232,6 +1278,27 @@ function viewPlan(id){
     </div>
     ${p.notes?`<div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;border-left:4px solid var(--gold);font-size:13px;color:var(--muted);line-height:1.7">${esc(p.notes)}</div>`:''}
     ${setupHtml}
+    ${(p.coachTips||[]).length?`<div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:13px;color:var(--purple,#c97af5);margin-bottom:10px">🎬 Coach Tips — Watch Before Practice</div>
+      ${(p.coachTips||[]).map(tip=>{
+        const d=tip.drillId?getDrill(tip.drillId):null;if(!d)return'';
+        const vid=ytId(d.url);const cc=CAT_COLOR[d.category]||'#888';
+        return `<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+          ${vid?`<a href="${d.url}" target="_blank" style="display:block;flex-shrink:0;border-radius:8px;overflow:hidden;position:relative;width:100px">
+            <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:100px;display:block"/>
+            <div style="position:absolute;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center">
+              <span style="color:#fff;font-size:16px">▶</span>
+            </div>
+          </a>`:''}
+          <div class="f1">
+            <div style="font-weight:700;font-size:13px;margin-bottom:3px">${esc(d.name)}</div>
+            <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>
+            ${tip.note?`<div style="font-size:12px;color:var(--muted);margin-top:5px;font-style:italic">${esc(tip.note)}</div>`:''}
+            <div style="margin-top:5px"><a href="${d.url}" target="_blank" style="font-size:11px;color:var(--gold)">▶ Watch on YouTube</a></div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`:''}
     ${itemsHtml}
     <div class="row" style="margin-top:10px;gap:8px">
       <button class="btn btn-dim" onclick="closeModal()">Close</button>
@@ -1361,6 +1428,23 @@ ${p.notes?`<div class="theme">${esc(p.notes).replace(/\n/g,'<br/>')}</div>`:''}
 <thead><tr style="background:#1a1a1a;color:#fff"><th style="padding:7px 12px;font-size:10px;text-align:left;width:130px">TIME</th><th style="padding:7px 12px;font-size:10px;text-align:left">ACTIVITY</th><th style="padding:7px 12px;font-size:10px;text-align:right">COACH</th></tr></thead>
 <tbody>${qrows}</tbody></table>
 ${setupPrint}
+${(()=>{
+  const tips=(p.coachTips||[]).filter(t=>t.drillId&&getDrill(t.drillId));
+  if(!tips.length)return'';
+  return `<div class="shdr">🎬 Coach Tips — Watch Before Practice</div>
+    <div style="margin-bottom:22px">${tips.map(tip=>{
+      const d=getDrill(tip.drillId);if(!d)return'';
+      const vid=ytId(d.url);
+      return `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;border-left:3px solid #c97af5;padding-left:12px">
+        ${vid?`<a href="${d.url}" target="_blank" style="flex-shrink:0"><img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:110px;border-radius:6px;display:block"/></a>`:''}
+        <div>
+          <div style="font-weight:800;font-size:14px;margin-bottom:3px">${esc(d.name)}</div>
+          ${tip.note?`<div style="font-size:12px;color:#555;font-style:italic;margin-bottom:4px">${esc(tip.note)}</div>`:''}
+          <a href="${d.url}" target="_blank" style="font-size:11px;color:#c97af5;font-weight:700">▶ Watch on YouTube</a>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+})()}
 <div class="shdr">📋 Full Practice Plan</div>
 ${frows}
 <div class="footer">⚡ HAMR Softball Hub · HAMR Hawks</div>
