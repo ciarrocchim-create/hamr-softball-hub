@@ -919,7 +919,7 @@ function showPlanEditor(isNew){
         const cc=d?CAT_COLOR[d.category]||'#888':'#888';
         const dOpts=DRILL_CATS.map(cat=>`<optgroup label="${cat}">${DB.drills.filter(x=>x.category===cat).map(x=>`<option value="${x.id}"${st.drillId===x.id?' selected':''}>${esc(x.name)}</option>`).join('')}</optgroup>`).join('');
         // Support both legacy drillId and new drillIds array
-        const stDrillIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[]))])];
+        const stDrillIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[])])];
         const stDrills=stDrillIds.map(id=>getDrill(id)).filter(Boolean);
         return `<div class="scell">
           <input value="${esc(st.stationLabel||'Station '+(si+1))}" style="font-weight:800;color:var(--blue);font-size:12px;background:transparent;border:none;padding:0;width:100%;margin-bottom:8px" onchange="updPI('${st.id}','stationLabel',this.value)"/>
@@ -1408,7 +1408,7 @@ function dlPlan(id){
       if(seen3.has(item.blockId))return'';seen3.add(item.blockId);
       const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
       const subrows=sts.map((st,si)=>{
-        const qIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[]))])];
+        const qIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[])])];
         const qDrills=qIds.map(id=>getDrill(id)).filter(Boolean);
         const drillNames=qDrills.length?qDrills.map(x=>esc(x.name)).join(' + '):(st.customName||'—');
         return `<tr style="background:#f5f8ff;border-bottom:1px solid #e8eeff"><td style="padding:5px 12px 5px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5">${esc(st.stationLabel||'Station '+(si+1))}</td><td style="padding:5px 12px;font-size:11px;font-weight:700">${drillNames}</td><td style="padding:5px 12px;font-size:11px;text-align:right">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td></tr>`;
