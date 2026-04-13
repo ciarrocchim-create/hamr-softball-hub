@@ -399,8 +399,22 @@ async function gistLoad(gid,token){
     const newD=SEED_DRILLS.filter(d=>!names.has(d.name));
     if(newD.length)merged.drills=[...merged.drills,...newD];
     // Also fix any existing drills whose IDs don't match seed — restore stable IDs
-    const seedById=Object.fromEntries(SEED_DRILLS.map(d=>[d.name,d.id]));
+    // Build old->new ID map before remapping
+    const oldToNew={};
+    merged.drills.forEach(d=>{if(seedById[d.name]&&d.id!==seedById[d.name])oldToNew[d.id]=seedById[d.name];});
     merged.drills=merged.drills.map(d=>seedById[d.name]?{...d,id:seedById[d.name]}:d);
+    // Update all drill references inside plans to use new stable IDs
+    if(Object.keys(oldToNew).length&&merged.plans){
+      merged.plans=merged.plans.map(plan=>({...plan,items:(plan.items||[]).map(item=>{
+        if(item.type==='station'){
+          return {...item,
+            drillId:item.drillId&&oldToNew[item.drillId]?oldToNew[item.drillId]:item.drillId,
+            drillIds:(item.drillIds||[]).map(id=>oldToNew[id]||id)
+          };
+        }
+        return {...item,drillId:item.drillId&&oldToNew[item.drillId]?oldToNew[item.drillId]:item.drillId};
+      })}));
+    }
   }
   if(!merged.players||merged.players.length===0){
     merged.players=SEED_PLAYERS.map(p=>({...p,id:uid()}));
