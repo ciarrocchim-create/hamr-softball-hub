@@ -399,6 +399,7 @@ async function gistLoad(gid,token){
     const newD=SEED_DRILLS.filter(d=>!names.has(d.name));
     if(newD.length)merged.drills=[...merged.drills,...newD];
     // Also fix any existing drills whose IDs don't match seed — restore stable IDs
+    const seedById=Object.fromEntries(SEED_DRILLS.map(d=>[d.name,d.id]));
     // Build old->new ID map before remapping
     const oldToNew={};
     merged.drills.forEach(d=>{if(seedById[d.name]&&d.id!==seedById[d.name])oldToNew[d.id]=seedById[d.name];});
