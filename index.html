@@ -1441,14 +1441,21 @@ function dlPlan(id){
       if(seen4.has(item.blockId))return'';seen4.add(item.blockId);
       const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
       const tstr=ts[item.blockId]?`<span style="font-size:10px;color:#2a9d5c;font-weight:700;margin-left:8px">⏱ ${ts[item.blockId]}</span>`:'';
-      const scols=sts.map((st,si)=>{const d=st.drillId?getDrill(st.drillId):null;const cc=d?CAT_COLOR[d.category]||'#888':'#888';
+      const scols=sts.map((st,si)=>{
+        const pIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[])])];
+        const pDrills=pIds.map(id=>getDrill(id)).filter(Boolean);
+        const drillsHtml=pDrills.length?pDrills.map((sd,sdi)=>{const scc=CAT_COLOR[sd.category]||'#888';
+          return `${sdi>0?'<div style="border-top:1px solid #eee;margin:6px 0"></div>':''}
+            <div style="font-weight:800;font-size:13px;margin-bottom:2px">${esc(sd.name)}</div>
+            <div style="font-size:10px;color:${scc};font-weight:700;margin-bottom:4px">${sd.category}</div>
+            ${sd.description?`<div style="font-size:10px;color:#666;line-height:1.6;white-space:pre-wrap;margin-bottom:4px">${esc(sd.description)}</div>`:''}`;
+        }).join(''):'<div style="color:#aaa;font-size:11px">No drill assigned</div>';
         return `<td style="padding:10px;border:1px solid #ddd;vertical-align:top;width:${Math.floor(100/sts.length)}%">
-          <div style="font-size:10px;font-weight:800;color:#5b8af5;text-transform:uppercase;margin-bottom:4px">${esc(st.stationLabel||'Station '+(si+1))}</div>
-          ${d?`<div style="font-weight:800;font-size:13px;margin-bottom:3px">${esc(d.name)}</div>`:''}
-          ${st.duration?`<div style="font-size:11px;font-weight:700;margin-bottom:3px">⏱ <b>${st.duration} min</b></div>`:''}
-          ${st.coach?`<div style="font-size:11px;font-weight:700;margin-bottom:4px">👤 <b>${esc(st.coach)}</b></div>`:''}
-          ${st.notes?`<div style="font-size:11px;font-weight:700;margin-bottom:4px">${esc(st.notes)}</div>`:''}
-          ${d?.description?`<div style="font-size:10px;color:#666;line-height:1.6;white-space:pre-wrap">${esc(d.description)}</div>`:''}
+          <div style="font-size:10px;font-weight:800;color:#5b8af5;text-transform:uppercase;margin-bottom:6px">${esc(st.stationLabel||'Station '+(si+1))}</div>
+          ${drillsHtml}
+          ${st.duration?`<div style="font-size:11px;font-weight:700;margin-top:5px;margin-bottom:3px">⏱ <b>${st.duration} min</b></div>`:''}
+          ${st.coach?`<div style="font-size:11px;font-weight:700;margin-bottom:3px">👤 <b>${esc(st.coach)}</b></div>`:''}
+          ${st.notes?`<div style="font-size:11px;font-weight:700">${esc(st.notes)}</div>`:''}
         </td>`;
       }).join('');
       return `<div style="margin-bottom:16px;border:2px solid #5b8af5;border-radius:8px;overflow:hidden">
