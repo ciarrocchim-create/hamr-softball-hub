@@ -2126,21 +2126,41 @@ function showGameModal(isNew){
 
   let body='';
   if(_gTab==='lineup'){
-    // Batting order + inning tracking table
+    // Detect duplicate batting spots
+    const spotCounts={};
+    EG.lineup.forEach(e=>{if(e.battingSpot>0)spotCounts[e.battingSpot]=(spotCounts[e.battingSpot]||0)+1;});
+    const dupSpots=new Set(Object.entries(spotCounts).filter(([,c])=>c>1).map(([s])=>parseInt(s)));
+
     const ordered=[...EG.lineup].sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
     const rows=ordered.map(ent=>{
       const p=getPlayer(ent.playerId);if(!p)return'';
+      const isOut=ent.outForGame||false;
+      const isDupSpot=ent.battingSpot>0&&dupSpots.has(ent.battingSpot);
       const bOpts=`<option value="">—</option>${Array.from({length:DB.players.length+2},(_,i)=>`<option value="${i+1}"${ent.battingSpot===i+1?' selected':''}>${i+1}</option>`).join('')}`;
-      const pbtn=POSITIONS.map(pos=>`<button type="button" class="tog btn-xs${(ent.positions||[]).includes(pos)?' on':''}" onclick="tglGPos('${ent.playerId}','${pos}',this)">${pos}</button>`).join('');
-      return `<tr>
-        <td style="padding:5px 8px;font-weight:600;white-space:nowrap;font-size:12px">#${esc(p.number||'—')} ${esc(p.name.split(' ')[0])}</td>
-        <td style="padding:5px 8px"><select style="width:55px;font-size:12px" onchange="updGL('${ent.playerId}','battingSpot',parseInt(this.value)||0)">${bOpts}</select></td>
-        <td style="padding:5px 8px"><input type="number" value="${ent.inningsPlayed||''}" placeholder="0" style="width:50px;text-align:center;font-size:12px" min="0" onchange="updGL('${ent.playerId}','inningsPlayed',parseInt(this.value)||0)"/></td>
+      const pbtn=POSITIONS.map(pos=>`<button type="button" class="tog btn-xs${(ent.positions||[]).includes(pos)?' on':''}" ${isOut?'disabled':''} onclick="tglGPos('${ent.playerId}','${pos}',this)">${pos}</button>`).join('');
+      return `<tr style="opacity:${isOut?'.45':'1'};background:${isOut?'var(--dim)':'transparent'}">
+        <td style="padding:5px 8px;font-weight:600;white-space:nowrap;font-size:12px">
+          #${esc(p.number||'—')} ${esc(p.name.split(' ')[0])}
+          ${isOut?'<span class="badge" style="background:var(--red)22;color:var(--red);font-size:9px;margin-left:4px">OUT</span>':''}
+        </td>
+        <td style="padding:5px 8px">
+          <select style="width:55px;font-size:12px;border-color:${isDupSpot?'var(--red)':'var(--border)'}${isDupSpot?';background:var(--red)18':''}" onchange="updGL('${ent.playerId}','battingSpot',parseInt(this.value)||0);showGameModal(${isOut})" ${isOut?'disabled':''}>
+            ${bOpts}
+          </select>
+          ${isDupSpot?'<span style="color:var(--red);font-size:10px;font-weight:700;display:block">⚠ dup</span>':''}
+        </td>
+        <td style="padding:5px 8px"><input type="number" value="${ent.inningsPlayed||''}" placeholder="0" style="width:50px;text-align:center;font-size:12px" min="0" ${isOut?'disabled':''} onchange="updGL('${ent.playerId}','inningsPlayed',parseInt(this.value)||0)"/></td>
         <td style="padding:5px 8px"><div class="row" style="gap:3px;flex-wrap:wrap">${pbtn}</div></td>
+        <td style="padding:5px 8px">
+          <button class="btn btn-xs ${isOut?'btn-gold':'btn-dim'}" onclick="updGL('${ent.playerId}','outForGame',${!isOut});showGameModal(${!DB.plans?.find?.(p=>p.id===EG?.id)})">
+            ${isOut?'↩ Return':'Out'}
+          </button>
+        </td>
       </tr>`;
     }).join('');
-    body=`<div style="overflow-x:auto"><table>
-      <thead><tr><th>Player</th><th>Bat #</th><th>Inn.</th><th>Positions</th></tr></thead>
+    const dupWarn=dupSpots.size?`<div style="background:var(--red)18;border:1px solid var(--red)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:10px">⚠ Duplicate batting order spots: ${[...dupSpots].join(', ')} — fix before planning innings</div>`:'';
+    body=`${dupWarn}<div style="overflow-x:auto"><table>
+      <thead><tr><th>Player</th><th>Bat #</th><th>Inn.</th><th>Positions</th><th>Status</th></tr></thead>
       <tbody>${rows}</tbody></table></div>`;
 
   } else {
@@ -2165,25 +2185,59 @@ function showGameModal(isNew){
         +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--green);background:var(--green)0a;border-left:3px solid var(--green)44">🏆 Winning<br/><span style="font-size:9px;font-weight:400;opacity:.7">Big lead</span></th>`
         +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--red);background:var(--red)0a;border-left:2px solid var(--red)33">😤 Down Big<br/><span style="font-size:9px;font-weight:400;opacity:.7">Comeback mode</span></th>`;
 
-      const gridRows=allInOrder.map(ent=>{
+      // Build conflict map: per inning, which positions are used more than once
+      const conflictMap={}; // {inn: Set of conflicted positions}
+      for(let inn=1;inn<=numInnings;inn++){
+        const inningData=EG.inningGrid[inn]||{};
+        const posCounts={};
+        Object.values(inningData).forEach(cell=>{
+          const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
+          if(pos)posCounts[pos]=(posCounts[pos]||0)+1;
+        });
+        conflictMap[inn]=new Set(Object.entries(posCounts).filter(([,c])=>c>1).map(([p])=>p));
+      }
+      // Available subs (players not in batting order or marked out)
+      const subPlayers=EG.lineup.filter(e=>!e.outForGame).map(e=>getPlayer(e.playerId)).filter(Boolean);
+
+      const gridRows=allInOrder.filter(e=>!e.outForGame).map(ent=>{
         const p=getPlayer(ent.playerId);if(!p)return'';
         const spot=String(ent.battingSpot||0);
 
         const regularCells=Array.from({length:numInnings},(_,inn)=>{
           const inningData=EG.inningGrid[inn+1]||{};
           const cell=inningData[spot]||{};
-          const curPos=cell.position||'';
-          return `<td style="padding:3px 2px;text-align:center">
-            <select style="width:68px;font-size:11px;text-align:center;background:${curPos?'var(--green)18':'var(--surface)'};border-color:${curPos?'var(--green)44':'var(--border)'}"
-              onchange="updGrid(${inn+1},'${spot}','${ent.playerId}',this.value)">
+          const subP=cell.subPlayerId?getPlayer(cell.subPlayerId):null;
+          const activePid=subP?cell.subPlayerId:ent.playerId;
+          const curPos=(subP?cell.subPosition:cell.position)||'';
+          const isConflict=curPos&&conflictMap[inn+1]?.has(curPos);
+          const cellBg=isConflict?'var(--red)22':curPos?'var(--green)18':'var(--surface)';
+          const cellBorder=isConflict?'var(--red)':curPos?'var(--green)44':'var(--border)';
+
+          // Sub player options
+          const subOpts=`<option value="">— no sub —</option>${subPlayers.filter(sp=>sp.id!==ent.playerId).map(sp=>`<option value="${sp.id}"${cell.subPlayerId===sp.id?' selected':''}>${esc(sp.name.split(' ')[0])}</option>`).join('')}`;
+
+          return `<td style="padding:2px 2px;text-align:center;vertical-align:top">
+            ${subP?`<div style="font-size:9px;color:var(--purple,#c97af5);font-weight:700;text-align:center">SUB: ${esc(subP.name.split(' ')[0])}</div>`:''}
+            <select style="width:68px;font-size:11px;text-align:center;background:${cellBg};border-color:${cellBorder}"
+              onchange="updGrid(${inn+1},'${spot}','${activePid}',this.value,'${subP?cell.subPlayerId:''}')">
               ${posOpts.replace(`value="${curPos}"`,`value="${curPos}" selected`)}
             </select>
+            ${isConflict?`<div style="font-size:9px;color:var(--red);font-weight:700">⚠ conflict</div>`:''}
+            <details style="margin-top:2px">
+              <summary style="font-size:9px;color:var(--muted);cursor:pointer;list-style:none;text-align:center">sub ▾</summary>
+              <select style="width:68px;font-size:10px;margin-top:2px" onchange="updGridSub(${inn+1},'${spot}','${ent.playerId}',this.value)">
+                ${subOpts}
+              </select>
+              ${subP?`<select style="width:68px;font-size:10px;margin-top:2px" onchange="updGridSubPos(${inn+1},'${spot}',this.value)">
+                ${posOpts.replace(`value="${cell.subPosition||''}"`,`value="${cell.subPosition||''}" selected`)}
+              </select>`:''}
+            </details>
           </td>`;
         }).join('');
 
         const winPos=(EG.altGrid.winning[spot]||{}).position||'';
         const losePos=(EG.altGrid.losing[spot]||{}).position||'';
-
+        const winConflict=false; // alt lineups don't conflict-check for now
         const altCells=`<td style="width:8px;background:var(--navy)"></td>
           <td style="padding:3px 2px;text-align:center;background:var(--green)06;border-left:3px solid var(--green)44">
             <select style="width:72px;font-size:11px;text-align:center;background:${winPos?'var(--green)22':'var(--surface)'};border-color:${winPos?'var(--green)':'var(--border)'}"
@@ -2204,19 +2258,25 @@ function showGameModal(isNew){
           ${regularCells}${altCells}
         </tr>`;
       }).join('');
+      // Row for out-for-game players
+      const outRow=EG.lineup.filter(e=>e.outForGame).map(e=>{const p=getPlayer(e.playerId);return p?`<span class="badge" style="background:var(--red)22;color:var(--red)">OUT: ${esc(p.name.split(' ')[0])}</span>`:''}).join(' ');
 
       // Copy inning button row
       const copyBtns=Array.from({length:numInnings},(_,inn)=>inn===0?'<td></td>':`<td style="text-align:center;padding:2px 2px"><button class="btn btn-dim btn-xs" onclick="copyInning(${inn})" title="Copy Inn ${inn}">↙${inn}</button></td>`).join('')
         +'<td style="width:8px"></td><td></td><td></td>';
 
+      const anyConflict=Object.values(conflictMap).some(s=>s.size>0);
       body=`<div style="overflow-x:auto">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Regular innings + two alternate lineups for blowout situations. Green = assigned.</div>
+        ${anyConflict?'<div style="background:var(--red)18;border:1px solid var(--red)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:8px">⚠ Position conflicts detected — same position assigned to two players in the same inning</div>':''}
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Green = assigned &nbsp;|&nbsp; Red = conflict &nbsp;|&nbsp; "sub ▾" = substitute a player into that inning's spot</div>
         <table style="border-collapse:collapse;width:100%">
           <thead>
             <tr><th style="text-align:left;padding:6px 8px;font-size:11px;min-width:110px">Player</th>${inningHeaders}</tr>
             <tr style="background:var(--dim)">${copyBtns}</tr>
           </thead>
-          <tbody>${gridRows}</tbody>
+          <tbody>${gridRows}
+          ${outRow?`<tr><td colspan="${numInnings+4}" style="padding:8px;font-size:11px;color:var(--muted)">Not playing: ${outRow}</td></tr>`:''}
+          </tbody>
         </table>
       </div>`;
     }
@@ -2229,14 +2289,28 @@ function showGameModal(isNew){
     </div>`,true);
 }
 
-function updGrid(inning,spot,pid,pos){
+function updGrid(inning,spot,pid,pos,subPid){
   if(!EG)return;
   if(!EG.inningGrid)EG.inningGrid={};
   if(!EG.inningGrid[inning])EG.inningGrid[inning]={};
-  EG.inningGrid[inning][spot]={playerId:pid,position:pos};
+  const existing=EG.inningGrid[inning][spot]||{};
+  EG.inningGrid[inning][spot]={...existing,playerId:pid,position:pos};
   const played=new Set();
-  Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{if(c.position&&c.playerId)played.add(c.playerId);}));
+  Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{if((c.position||c.subPosition)&&c.playerId)played.add(c.playerId);if(c.subPlayerId)played.add(c.subPlayerId);}));
   EG.lineup.forEach(e=>{if(played.has(e.playerId)&&!e.inningsPlayed)e.inningsPlayed=1;});
+}
+function updGridSub(inning,spot,origPid,subPid){
+  if(!EG)return;
+  if(!EG.inningGrid)EG.inningGrid={};
+  if(!EG.inningGrid[inning])EG.inningGrid[inning]={};
+  const existing=EG.inningGrid[inning][spot]||{playerId:origPid,position:''};
+  if(!subPid){delete existing.subPlayerId;delete existing.subPosition;}
+  else{existing.subPlayerId=subPid;existing.subPosition=existing.subPosition||'';}
+  EG.inningGrid[inning][spot]=existing;
+}
+function updGridSubPos(inning,spot,pos){
+  if(!EG||!EG.inningGrid?.[inning]?.[spot])return;
+  EG.inningGrid[inning][spot].subPosition=pos;
 }
 function updAltGrid(scenario,spot,pid,pos){
   if(!EG)return;
