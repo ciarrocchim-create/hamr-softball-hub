@@ -2097,13 +2097,14 @@ function editGame(id){
   if(isNew){
     EG={id:uid(),date:new Date().toISOString().slice(0,10),opponent:'',innings:6,
       lineup:DB.players.map(p=>({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0})),
-      inningGrid:{} // {inningNum: {battingSpot: {playerId, position}}}
+      inningGrid:{},altGrid:{winning:{},losing:{}} // alt lineups for blowout situations
     };
   } else {
     EG=JSON.parse(JSON.stringify(DB.games.find(g=>g.id===id)));
     const ids=new Set(EG.lineup.map(l=>l.playerId));
     DB.players.filter(p=>!ids.has(p.id)).forEach(p=>EG.lineup.push({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0}));
     if(!EG.inningGrid)EG.inningGrid={};
+    if(!EG.altGrid)EG.altGrid={winning:{},losing:{}};
   }
   _gTab='lineup';
   showGameModal(isNew);
@@ -2156,36 +2157,60 @@ function showGameModal(isNew){
         Set batting order numbers in the <strong style="color:var(--text)">Batting Order & Tracking</strong> tab first, then come back here to plan each inning.
       </div>`;
     } else {
-      // Build the grid - rows=batting spots, cols=innings
-      const inningHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;min-width:75px;padding:6px 4px;font-size:11px">Inn ${i+1}</th>`).join('');
+      // Build the grid - rows=batting spots, cols=innings + 2 alt scenarios
+      if(!EG.altGrid)EG.altGrid={winning:{},losing:{}};
+
+      const inningHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;min-width:72px;padding:6px 4px;font-size:11px;color:var(--muted)">Inn ${i+1}</th>`).join('')
+        +`<th style="width:8px;background:var(--navy)"></th>`
+        +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--green);background:var(--green)0a;border-left:3px solid var(--green)44">🏆 Winning<br/><span style="font-size:9px;font-weight:400;opacity:.7">Big lead</span></th>`
+        +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--red);background:var(--red)0a;border-left:2px solid var(--red)33">😤 Down Big<br/><span style="font-size:9px;font-weight:400;opacity:.7">Comeback mode</span></th>`;
 
       const gridRows=allInOrder.map(ent=>{
         const p=getPlayer(ent.playerId);if(!p)return'';
-        const cells=Array.from({length:numInnings},(_,inn)=>{
+        const spot=String(ent.battingSpot||0);
+
+        const regularCells=Array.from({length:numInnings},(_,inn)=>{
           const inningData=EG.inningGrid[inn+1]||{};
-          const spot=ent.battingSpot||'?';
           const cell=inningData[spot]||{};
           const curPos=cell.position||'';
-          // Copy from previous inning button
-          return `<td style="padding:3px 4px;text-align:center">
-            <select style="width:70px;font-size:11px;text-align:center;background:${curPos?'var(--green)18':'var(--surface)'};border-color:${curPos?'var(--green)44':'var(--border)'}" 
-              onchange="updGrid(${inn+1},'${ent.battingSpot||0}','${ent.playerId}',this.value)">
+          return `<td style="padding:3px 2px;text-align:center">
+            <select style="width:68px;font-size:11px;text-align:center;background:${curPos?'var(--green)18':'var(--surface)'};border-color:${curPos?'var(--green)44':'var(--border)'}"
+              onchange="updGrid(${inn+1},'${spot}','${ent.playerId}',this.value)">
               ${posOpts.replace(`value="${curPos}"`,`value="${curPos}" selected`)}
             </select>
           </td>`;
         }).join('');
+
+        const winPos=(EG.altGrid.winning[spot]||{}).position||'';
+        const losePos=(EG.altGrid.losing[spot]||{}).position||'';
+
+        const altCells=`<td style="width:8px;background:var(--navy)"></td>
+          <td style="padding:3px 2px;text-align:center;background:var(--green)06;border-left:3px solid var(--green)44">
+            <select style="width:72px;font-size:11px;text-align:center;background:${winPos?'var(--green)22':'var(--surface)'};border-color:${winPos?'var(--green)':'var(--border)'}"
+              onchange="updAltGrid('winning','${spot}','${ent.playerId}',this.value)">
+              ${posOpts.replace(`value="${winPos}"`,`value="${winPos}" selected`)}
+            </select>
+          </td>
+          <td style="padding:3px 2px;text-align:center;background:var(--red)06;border-left:2px solid var(--red)33">
+            <select style="width:72px;font-size:11px;text-align:center;background:${losePos?'var(--red)22':'var(--surface)'};border-color:${losePos?'var(--red)':'var(--border)'}"
+              onchange="updAltGrid('losing','${spot}','${ent.playerId}',this.value)">
+              ${posOpts.replace(`value="${losePos}"`,`value="${losePos}" selected`)}
+            </select>
+          </td>`;
+
         const spotBadge=ent.battingSpot?`<span style="color:var(--gold);font-weight:800;font-size:13px;min-width:18px;display:inline-block">${ent.battingSpot}.</span>`:`<span style="color:var(--dim);font-size:11px">—</span>`;
         return `<tr style="border-bottom:1px solid var(--border)">
           <td style="padding:6px 8px;white-space:nowrap;font-size:12px;font-weight:600;min-width:110px">${spotBadge} ${esc(p.name.split(' ')[0])} <span style="color:var(--muted);font-size:10px">#${esc(p.number||'')}</span></td>
-          ${cells}
+          ${regularCells}${altCells}
         </tr>`;
       }).join('');
 
       // Copy inning button row
-      const copyBtns=Array.from({length:numInnings},(_,inn)=>inn===0?'<td></td>':`<td style="text-align:center;padding:2px 4px"><button class="btn btn-dim btn-xs" onclick="copyInning(${inn})" title="Copy from Inn ${inn}">↙ Inn ${inn}</button></td>`).join('');
+      const copyBtns=Array.from({length:numInnings},(_,inn)=>inn===0?'<td></td>':`<td style="text-align:center;padding:2px 2px"><button class="btn btn-dim btn-xs" onclick="copyInning(${inn})" title="Copy Inn ${inn}">↙${inn}</button></td>`).join('')
+        +'<td style="width:8px"></td><td></td><td></td>';
 
       body=`<div style="overflow-x:auto">
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Set each player's position for each inning. Green = assigned.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Regular innings + two alternate lineups for blowout situations. Green = assigned.</div>
         <table style="border-collapse:collapse;width:100%">
           <thead>
             <tr><th style="text-align:left;padding:6px 8px;font-size:11px;min-width:110px">Player</th>${inningHeaders}</tr>
@@ -2209,10 +2234,14 @@ function updGrid(inning,spot,pid,pos){
   if(!EG.inningGrid)EG.inningGrid={};
   if(!EG.inningGrid[inning])EG.inningGrid[inning]={};
   EG.inningGrid[inning][spot]={playerId:pid,position:pos};
-  // Auto-update inningsPlayed count
   const played=new Set();
   Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{if(c.position&&c.playerId)played.add(c.playerId);}));
   EG.lineup.forEach(e=>{if(played.has(e.playerId)&&!e.inningsPlayed)e.inningsPlayed=1;});
+}
+function updAltGrid(scenario,spot,pid,pos){
+  if(!EG)return;
+  if(!EG.altGrid)EG.altGrid={winning:{},losing:{}};
+  EG.altGrid[scenario][spot]={playerId:pid,position:pos};
 }
 function copyInning(fromInn){
   if(!EG)return;
