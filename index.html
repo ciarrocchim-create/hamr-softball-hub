@@ -190,6 +190,7 @@ canvas{display:block;width:100%!important}
     <button data-tab="dev" onclick="goTab(this)">📈 Development</button>
     <button data-tab="lineups" onclick="goTab(this)">⚾ Lineups</button>
     <button data-tab="stats" onclick="goTab(this)">📊 Stats</button>
+    <button data-tab="jokes" onclick="goTab(this)">😄 Dad Jokes</button>
   </div>
 
   <div id="content"><div class="inner" id="main"></div></div>
@@ -203,6 +204,7 @@ canvas{display:block;width:100%!important}
       <button data-tab="dev" onclick="goTab(this)"><span class="ico">📈</span>Dev</button>
       <button data-tab="lineups" onclick="goTab(this)"><span class="ico">⚾</span>Lineups</button>
       <button data-tab="stats" onclick="goTab(this)"><span class="ico">📊</span>Stats</button>
+      <button data-tab="jokes" onclick="goTab(this)"><span class="ico">😄</span>Jokes</button>
     </div>
   </div>
 </div>
@@ -350,7 +352,7 @@ const TYPE_COLOR={'Drill':'#5b8af5','Tip':'#c97af5','Warmup':'#3ddc84','Progress
 const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catching:'#c97af5',Baserunning:'#f5a05b',Conditioning:'#f16b6b',Other:'#7b88a8'};
 const GIST_ID_KEY='sh_gist_id';
 const GH_TOKEN_KEY='sh_gh_token';
-const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[]};
+const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[],jokes:[]};
 
 // ═══ STATE ══════════════════════════════════════════════
 let gistId=localStorage.getItem(GIST_ID_KEY)||'';
@@ -483,6 +485,7 @@ function renderTab(){
   else if(currentTab==='dev'){renderDev();return;}
   else if(currentTab==='lineups')el.innerHTML=renderLineups();
   else if(currentTab==='stats')el.innerHTML=renderStats();
+  else if(currentTab==='jokes')el.innerHTML=renderJokes();
 }
 
 // ═══ BACKUP / RESTORE ═══════════════════════════════════
@@ -2086,37 +2089,154 @@ function renderLineups(){
     }).join('');
   return `<div class="row" style="margin-bottom:18px"><h2 class="st">⚾ Lineup Tracker</h2><div class="f1"></div>${DB.games.length?`<button class="btn btn-blue btn-sm" onclick="showPT()">📊 Playing Time</button>`:''}&nbsp;<button class="btn btn-gold" onclick="editGame(null)">+ New Game</button></div>${rows}`;
 }
+// ── GAME EDITOR ───────────────────────────────────────────
+let _gTab='lineup'; // 'lineup' or 'grid'
+
 function editGame(id){
   const isNew=!id;
-  if(isNew){EG={id:uid(),date:new Date().toISOString().slice(0,10),opponent:'',innings:6,lineup:DB.players.map(p=>({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0}))};}
-  else{EG=JSON.parse(JSON.stringify(DB.games.find(g=>g.id===id)));const ids=new Set(EG.lineup.map(l=>l.playerId));DB.players.filter(p=>!ids.has(p.id)).forEach(p=>EG.lineup.push({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0}));}
-  const rows=EG.lineup.map(ent=>{
-    const p=getPlayer(ent.playerId);if(!p)return'';
-    const bOpts=`<option value="">—</option>${Array.from({length:12},(_,i)=>`<option value="${i+1}"${ent.battingSpot===i+1?' selected':''}>${i+1}</option>`).join('')}`;
-    const pbtn=POSITIONS.map(pos=>`<button type="button" class="tog btn-xs${(ent.positions||[]).includes(pos)?' on':''}" onclick="tglGPos('${ent.playerId}','${pos}',this)">${pos}</button>`).join('');
-    return `<tr><td style="padding:6px 8px;font-weight:600;white-space:nowrap">#${esc(p.number||'—')} ${esc(p.name)}</td>
-      <td style="padding:6px 8px"><select style="width:60px" onchange="updGL('${ent.playerId}','battingSpot',parseInt(this.value)||0)">${bOpts}</select></td>
-      <td style="padding:6px 8px"><input type="number" value="${ent.inningsPlayed||''}" placeholder="0" style="width:55px;text-align:center" min="0" onchange="updGL('${ent.playerId}','inningsPlayed',parseInt(this.value)||0)"/></td>
-      <td style="padding:6px 8px"><div class="row" style="gap:3px;flex-wrap:wrap">${pbtn}</div></td>
-    </tr>`;
-  }).join('');
-  showModal(`${mhdr(isNew?'New Game':'Edit Game')}
-    <div class="col">
-      <div class="row" style="gap:8px">
-        <div class="f1"><div class="lbl">Opponent</div><input id="g-opp" value="${esc(EG.opponent)}" placeholder="Team name" onchange="EG.opponent=this.value"/></div>
-        <div><div class="lbl">Date</div><input type="date" id="g-date" value="${EG.date}" style="width:155px" onchange="EG.date=this.value"/></div>
-      </div>
-      <div><div class="lbl">Innings</div><select style="width:120px" onchange="EG.innings=parseInt(this.value)">${[4,5,6,7].map(n=>`<option value="${n}"${EG.innings===n?' selected':''}>${n}</option>`).join('')}</select></div>
-      <div style="overflow-x:auto"><table><thead><tr><th>Player</th><th>Bat #</th><th>Innings</th><th>Positions</th></tr></thead><tbody>${rows}</tbody></table></div>
-      <div class="row">
-        <button class="btn btn-gold" onclick="saveGame(${isNew})">Save Game</button>
-        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
-      </div>
+  if(isNew){
+    EG={id:uid(),date:new Date().toISOString().slice(0,10),opponent:'',innings:6,
+      lineup:DB.players.map(p=>({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0})),
+      inningGrid:{} // {inningNum: {battingSpot: {playerId, position}}}
+    };
+  } else {
+    EG=JSON.parse(JSON.stringify(DB.games.find(g=>g.id===id)));
+    const ids=new Set(EG.lineup.map(l=>l.playerId));
+    DB.players.filter(p=>!ids.has(p.id)).forEach(p=>EG.lineup.push({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0}));
+    if(!EG.inningGrid)EG.inningGrid={};
+  }
+  _gTab='lineup';
+  showGameModal(isNew);
+}
+
+function showGameModal(isNew){
+  if(!EG)return;
+  const tabBtns=`<div class="row" style="gap:6px;margin-bottom:16px">
+    <button class="tog${_gTab==='lineup'?' on':''}" onclick="_gTab='lineup';showGameModal(${isNew})">📋 Batting Order & Tracking</button>
+    <button class="tog${_gTab==='grid'?' on':''}" onclick="_gTab='grid';showGameModal(${isNew})">📊 Inning-by-Inning Planner</button>
+  </div>`;
+
+  const header=`${mhdr(isNew?'New Game':'Edit Game')}
+    <div class="row" style="gap:8px;margin-bottom:14px">
+      <div class="f1"><div class="lbl">Opponent</div><input id="g-opp" value="${esc(EG.opponent)}" placeholder="Team name" onchange="EG.opponent=this.value"/></div>
+      <div><div class="lbl">Date</div><input type="date" id="g-date" value="${EG.date}" style="width:155px" onchange="EG.date=this.value"/></div>
+      <div><div class="lbl">Innings</div><select style="width:80px" onchange="EG.innings=parseInt(this.value);showGameModal(${isNew})">${[4,5,6,7].map(n=>`<option value="${n}"${EG.innings===n?' selected':''}>${n}</option>`).join('')}</select></div>
+    </div>`;
+
+  let body='';
+  if(_gTab==='lineup'){
+    // Batting order + inning tracking table
+    const ordered=[...EG.lineup].sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
+    const rows=ordered.map(ent=>{
+      const p=getPlayer(ent.playerId);if(!p)return'';
+      const bOpts=`<option value="">—</option>${Array.from({length:DB.players.length+2},(_,i)=>`<option value="${i+1}"${ent.battingSpot===i+1?' selected':''}>${i+1}</option>`).join('')}`;
+      const pbtn=POSITIONS.map(pos=>`<button type="button" class="tog btn-xs${(ent.positions||[]).includes(pos)?' on':''}" onclick="tglGPos('${ent.playerId}','${pos}',this)">${pos}</button>`).join('');
+      return `<tr>
+        <td style="padding:5px 8px;font-weight:600;white-space:nowrap;font-size:12px">#${esc(p.number||'—')} ${esc(p.name.split(' ')[0])}</td>
+        <td style="padding:5px 8px"><select style="width:55px;font-size:12px" onchange="updGL('${ent.playerId}','battingSpot',parseInt(this.value)||0)">${bOpts}</select></td>
+        <td style="padding:5px 8px"><input type="number" value="${ent.inningsPlayed||''}" placeholder="0" style="width:50px;text-align:center;font-size:12px" min="0" onchange="updGL('${ent.playerId}','inningsPlayed',parseInt(this.value)||0)"/></td>
+        <td style="padding:5px 8px"><div class="row" style="gap:3px;flex-wrap:wrap">${pbtn}</div></td>
+      </tr>`;
+    }).join('');
+    body=`<div style="overflow-x:auto"><table>
+      <thead><tr><th>Player</th><th>Bat #</th><th>Inn.</th><th>Positions</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+
+  } else {
+    // Inning-by-inning grid planner
+    // Batting order from lineup
+    const ordered=[...EG.lineup].filter(e=>e.battingSpot>0).sort((a,b)=>a.battingSpot-b.battingSpot);
+    const unset=EG.lineup.filter(e=>!e.battingSpot||e.battingSpot===0);
+    const allInOrder=[...ordered,...unset];
+    const numInnings=EG.innings||6;
+    const posOpts=`<option value="">—</option>${POSITIONS.map(pos=>`<option value="${pos}">${pos}</option>`).join('')}`;
+
+    if(!ordered.length){
+      body=`<div class="surface" style="text-align:center;padding:24px;color:var(--muted);font-size:13px">
+        Set batting order numbers in the <strong style="color:var(--text)">Batting Order & Tracking</strong> tab first, then come back here to plan each inning.
+      </div>`;
+    } else {
+      // Build the grid - rows=batting spots, cols=innings
+      const inningHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;min-width:75px;padding:6px 4px;font-size:11px">Inn ${i+1}</th>`).join('');
+
+      const gridRows=allInOrder.map(ent=>{
+        const p=getPlayer(ent.playerId);if(!p)return'';
+        const cells=Array.from({length:numInnings},(_,inn)=>{
+          const inningData=EG.inningGrid[inn+1]||{};
+          const spot=ent.battingSpot||'?';
+          const cell=inningData[spot]||{};
+          const curPos=cell.position||'';
+          // Copy from previous inning button
+          return `<td style="padding:3px 4px;text-align:center">
+            <select style="width:70px;font-size:11px;text-align:center;background:${curPos?'var(--green)18':'var(--surface)'};border-color:${curPos?'var(--green)44':'var(--border)'}" 
+              onchange="updGrid(${inn+1},'${ent.battingSpot||0}','${ent.playerId}',this.value)">
+              ${posOpts.replace(`value="${curPos}"`,`value="${curPos}" selected`)}
+            </select>
+          </td>`;
+        }).join('');
+        const spotBadge=ent.battingSpot?`<span style="color:var(--gold);font-weight:800;font-size:13px;min-width:18px;display:inline-block">${ent.battingSpot}.</span>`:`<span style="color:var(--dim);font-size:11px">—</span>`;
+        return `<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:6px 8px;white-space:nowrap;font-size:12px;font-weight:600;min-width:110px">${spotBadge} ${esc(p.name.split(' ')[0])} <span style="color:var(--muted);font-size:10px">#${esc(p.number||'')}</span></td>
+          ${cells}
+        </tr>`;
+      }).join('');
+
+      // Copy inning button row
+      const copyBtns=Array.from({length:numInnings},(_,inn)=>inn===0?'<td></td>':`<td style="text-align:center;padding:2px 4px"><button class="btn btn-dim btn-xs" onclick="copyInning(${inn})" title="Copy from Inn ${inn}">↙ Inn ${inn}</button></td>`).join('');
+
+      body=`<div style="overflow-x:auto">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Set each player's position for each inning. Green = assigned.</div>
+        <table style="border-collapse:collapse;width:100%">
+          <thead>
+            <tr><th style="text-align:left;padding:6px 8px;font-size:11px;min-width:110px">Player</th>${inningHeaders}</tr>
+            <tr style="background:var(--dim)">${copyBtns}</tr>
+          </thead>
+          <tbody>${gridRows}</tbody>
+        </table>
+      </div>`;
+    }
+  }
+
+  showModal(`${header}${tabBtns}${body}
+    <div class="row" style="margin-top:14px;gap:8px">
+      <button class="btn btn-gold" onclick="saveGame(${isNew})">Save Game</button>
+      <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
     </div>`,true);
+}
+
+function updGrid(inning,spot,pid,pos){
+  if(!EG)return;
+  if(!EG.inningGrid)EG.inningGrid={};
+  if(!EG.inningGrid[inning])EG.inningGrid[inning]={};
+  EG.inningGrid[inning][spot]={playerId:pid,position:pos};
+  // Auto-update inningsPlayed count
+  const played=new Set();
+  Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{if(c.position&&c.playerId)played.add(c.playerId);}));
+  EG.lineup.forEach(e=>{if(played.has(e.playerId)&&!e.inningsPlayed)e.inningsPlayed=1;});
+}
+function copyInning(fromInn){
+  if(!EG)return;
+  if(!EG.inningGrid)EG.inningGrid={};
+  const src=EG.inningGrid[fromInn]||{};
+  EG.inningGrid[fromInn+1]=JSON.parse(JSON.stringify(src));
+  showGameModal(!DB.plans.find(p=>p.id===EG?.id));
 }
 function updGL(pid,f,v){if(EG){const e=EG.lineup.find(x=>x.playerId===pid);if(e)e[f]=v;}}
 function tglGPos(pid,pos,btn){if(!EG)return;const e=EG.lineup.find(x=>x.playerId===pid);if(!e)return;e.positions=e.positions.includes(pos)?e.positions.filter(p=>p!==pos):[...e.positions,pos];btn.classList.toggle('on');}
-function saveGame(isNew){if(!EG)return;if(isNew)DB.games.push(EG);else{const i=DB.games.findIndex(g=>g.id===EG.id);if(i>=0)DB.games[i]=EG;}closeModal();scheduleSave();renderTab();updateCounts();}
+function saveGame(isNew){if(!EG)return;
+  EG.opponent=document.getElementById('g-opp')?.value||EG.opponent;
+  EG.date=document.getElementById('g-date')?.value||EG.date;
+  // Auto-compute inningsPlayed from grid if grid has data
+  if(EG.inningGrid&&Object.keys(EG.inningGrid).length){
+    const pInnings={};
+    Object.entries(EG.inningGrid).forEach(([inn,spots])=>{
+      Object.values(spots).forEach(c=>{if(c.position&&c.playerId)pInnings[c.playerId]=(pInnings[c.playerId]||0)+1;});
+    });
+    EG.lineup.forEach(e=>{if(pInnings[e.playerId]!==undefined)e.inningsPlayed=pInnings[e.playerId];});
+  }
+  if(isNew)DB.games.push(EG);else{const i=DB.games.findIndex(g=>g.id===EG.id);if(i>=0)DB.games[i]=EG;}
+  closeModal();scheduleSave();renderTab();updateCounts();
+}
 function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();renderTab();updateCounts();}
 function showPT(){
   const rep=DB.players.map(p=>{
@@ -2204,6 +2324,73 @@ function handleStatsCSV(input){
 function confirmStats(rows){DB.gcStats=[...(DB.gcStats||[]),...rows];closeModal();scheduleSave();renderTab();}
 
 // ═══ INIT ═════════════════════════════════════════════════
+// ═══ DAD JOKES ══════════════════════════════════════════
+const SEED_JOKES=[
+  "My wife told me to pick up a 6 pack of Sprite at the store. But when I got home I realized I had picked 7 Up!",
+  "Why did the scarecrow win an award? He was outstanding in his field!",
+  "I had this sweater that just picked up ridiculous amounts of static electricity. I had to return it. They gave me another one free of charge!",
+  "I really wanted to start a new diet. But I just feel like I have too much on my plate right now!",
+  "Every morning I get hit by a bike. It's a vicious cycle!",
+  "Did you hear about the 12 inch King? He was a lousy king but a terrific ruler!",
+  "Why did the softball player bring string to the game? So she could tie the score!",
+  "Why don't softball players ever get hot? Because they have so many fans!",
+  "What do softball players eat on? Home plates!",
+  "Why was the softball field so wet? Because the players kept running home!",
+  "What's a softball player's favorite type of music? Swing music!",
+  "Why did the softball player bring a ladder to practice? She heard the coach wanted her to reach new heights!",
+  "What did the softball glove say to the ball? Catch ya later!",
+  "Why did the coach go to the bank? To get her quarter back!",
+  "What do you call a softball player who only hits singles? A cab driver!",
+  "Why did the pitcher go to jail? She got caught throwing a curve!",
+  "What do you call a bear who plays softball? A batting bear!",
+  "Why did the outfielder bring an umbrella? She heard there was a chance of showers in the seventh inning!",
+];
+function getJokes(){return(DB.jokes&&DB.jokes.length)?DB.jokes:[...SEED_JOKES];}
+function renderJokes(){
+  const jokes=getJokes();
+  const rand=jokes[Math.floor(Math.random()*jokes.length)];
+  return `<div class="row" style="margin-bottom:18px">
+    <h2 class="st">😄 Dad Jokes</h2><div class="f1"></div>
+    <button class="btn btn-gold" onclick="addJoke()">+ Add Joke</button>
+  </div>
+  <div class="card" style="margin-bottom:22px;background:var(--gold)11;border:2px solid var(--gold)44;text-align:center;padding:22px 20px">
+    <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px">🎲 Random Joke</div>
+    <div style="font-size:17px;line-height:1.8;font-style:italic;margin-bottom:16px">"${esc(rand)}"</div>
+    <button class="btn btn-gold btn-sm" onclick="document.getElementById('main').innerHTML=renderJokes()">🔀 Another one</button>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:12px">${jokes.length} jokes in your collection</div>
+  ${jokes.map((j,i)=>`<div class="card" style="margin-bottom:10px;border-left:4px solid var(--gold)">
+    <div style="font-size:14px;line-height:1.7;margin-bottom:10px">${esc(j)}</div>
+    <div class="row" style="gap:6px">
+      <button class="btn btn-dim btn-sm" onclick="editJoke(${i})">Edit</button>
+      <button class="btn btn-red btn-sm" onclick="deleteJoke(${i})">Delete</button>
+    </div>
+  </div>`).join('')}`;
+}
+function addJoke(){
+  showModal(`${mhdr('Add a Dad Joke')}<div class="col">
+    <div><div class="lbl">The Joke</div><textarea id="joke-txt" rows="3" placeholder="Why did the softball player…"></textarea></div>
+    <div class="row"><button class="btn btn-gold" onclick="saveJoke(-1)">Add</button><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>
+  </div>`);
+}
+function editJoke(idx){
+  const j=getJokes()[idx]||'';
+  showModal(`${mhdr('Edit Joke')}<div class="col">
+    <div><div class="lbl">The Joke</div><textarea id="joke-txt" rows="3">${esc(j)}</textarea></div>
+    <div class="row"><button class="btn btn-gold" onclick="saveJoke(${idx})">Save</button><button class="btn btn-dim" onclick="closeModal()">Cancel</button></div>
+  </div>`);
+}
+function saveJoke(idx){
+  const txt=document.getElementById('joke-txt').value.trim();if(!txt)return;
+  const jokes=[...getJokes()];
+  if(idx<0)jokes.push(txt);else jokes[idx]=txt;
+  DB.jokes=jokes;scheduleSave();closeModal();renderTab();
+}
+function deleteJoke(idx){
+  const jokes=[...getJokes()];jokes.splice(idx,1);
+  DB.jokes=jokes;scheduleSave();renderTab();
+}
+
 window.addEventListener('DOMContentLoaded',()=>{
   renderSetup();
   if(gistId&&ghToken){
