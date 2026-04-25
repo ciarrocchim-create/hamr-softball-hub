@@ -2202,7 +2202,7 @@ function showGameModal(isNew){
         const posCounts={};
         Object.values(inningData).forEach(cell=>{
           const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
-          if(pos)posCounts[pos]=(posCounts[pos]||0)+1;
+          if(pos&&pos!=='BN')posCounts[pos]=(posCounts[pos]||0)+1;
         });
         conflictMap[inn]=new Set(Object.entries(posCounts).filter(([,c])=>c>1).map(([p])=>p));
       }
@@ -2213,15 +2213,57 @@ function showGameModal(isNew){
         const p=getPlayer(ent.playerId);if(!p)return'';
         const spot=String(ent.battingSpot||0);
 
+        // Pre-compute all positions for this player across all innings
+        const playerPosArr=Array.from({length:numInnings},(_,i)=>{
+          const c=EG.inningGrid[i+1]?.[spot]||{};
+          return (c.subPlayerId?c.subPosition:c.position)||'';
+        });
+        // Compute consecutive streak for each inning
+        // streak[i] = {playStreak, benchStreak} ending AT inning i
+        const streaks=playerPosArr.map((pos,i)=>{
+          const isPlaying=pos&&pos!=='BN';
+          const isBench=pos==='BN';
+          const isUnset=!pos;
+          let playStreak=0,benchStreak=0;
+          if(isPlaying){
+            for(let j=i;j>=0;j--){const p=playerPosArr[j];if(p&&p!=='BN')playStreak++;else break;}
+          }
+          if(isBench){
+            for(let j=i;j>=0;j--){if(playerPosArr[j]==='BN')benchStreak++;else break;}
+          }
+          return{playStreak,benchStreak};
+        });
+
         const regularCells=Array.from({length:numInnings},(_,inn)=>{
           const inningData=EG.inningGrid[inn+1]||{};
           const cell=inningData[spot]||{};
           const subP=cell.subPlayerId?getPlayer(cell.subPlayerId):null;
           const activePid=subP?cell.subPlayerId:ent.playerId;
           const curPos=(subP?cell.subPosition:cell.position)||'';
-          const isConflict=curPos&&conflictMap[inn+1]?.has(curPos);
-          const cellBg=isConflict?'var(--red)22':curPos?'var(--green)18':'var(--surface)';
-          const cellBorder=isConflict?'var(--red)':curPos?'var(--green)44':'var(--border)';
+          const isConflict=curPos&&curPos!=='BN'&&conflictMap[inn+1]?.has(curPos);
+          const isBench=curPos==='BN';
+          const isPlaying=curPos&&!isBench;
+          const {playStreak,benchStreak}=streaks[inn];
+
+          // Consecutive warnings override normal coloring
+          let cellBg,cellBorder,streakLabel='';
+          if(isConflict){
+            cellBg='var(--red)33';cellBorder='var(--red)';
+          } else if(isPlaying&&playStreak>=4){
+            cellBg='rgba(241,107,107,.28)';cellBorder='var(--red)';streakLabel=`<div style="font-size:9px;color:var(--red);font-weight:700">${playStreak} in a row</div>`;
+          } else if(isPlaying&&playStreak>=3){
+            cellBg='rgba(240,165,0,.22)';cellBorder='var(--gold)';streakLabel=`<div style="font-size:9px;color:var(--gold);font-weight:700">${playStreak} in a row</div>`;
+          } else if(isBench&&benchStreak>=3){
+            cellBg='rgba(241,107,107,.22)';cellBorder='var(--red)';streakLabel=`<div style="font-size:9px;color:var(--red);font-weight:700">${benchStreak} bench</div>`;
+          } else if(isBench&&benchStreak>=2){
+            cellBg='rgba(240,165,0,.18)';cellBorder='var(--gold)';streakLabel=`<div style="font-size:9px;color:var(--gold);font-weight:700">${benchStreak} bench</div>`;
+          } else if(isPlaying){
+            cellBg='var(--green)18';cellBorder='var(--green)44';
+          } else if(isBench){
+            cellBg='var(--dim)';cellBorder='var(--border)';
+          } else {
+            cellBg='var(--surface)';cellBorder='var(--border)';
+          }
 
           // Sub player options
           const subOpts=`<option value="">— no sub —</option>${subPlayers.filter(sp=>sp.id!==ent.playerId).map(sp=>`<option value="${sp.id}"${cell.subPlayerId===sp.id?' selected':''}>${esc(sp.name.split(' ')[0])}</option>`).join('')}`;
@@ -2233,6 +2275,7 @@ function showGameModal(isNew){
               ${posOpts.replace(`value="${curPos}"`,`value="${curPos}" selected`)}
             </select>
             ${isConflict?`<div style="font-size:9px;color:var(--red);font-weight:700">⚠ conflict</div>`:''}
+            ${streakLabel}
             <details style="margin-top:2px">
               <summary style="font-size:9px;color:var(--muted);cursor:pointer;list-style:none;text-align:center">sub ▾</summary>
               <select style="width:68px;font-size:10px;margin-top:2px" onchange="updGridSub(${inn+1},'${spot}','${ent.playerId}',this.value)">
@@ -2294,7 +2337,13 @@ function showGameModal(isNew){
 
       body=`<div style="overflow-x:auto">
         ${anyConflict?'<div style="background:var(--red)18;border:1px solid var(--red)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:8px">⚠ Position conflicts detected — same position assigned to two players in the same inning</div>':''}
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Green = assigned &nbsp;|&nbsp; Red = conflict &nbsp;|&nbsp; "sub ▾" = substitute a player into that inning's spot</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;display:flex;gap:12px;flex-wrap:wrap">
+          <span>🟢 Playing</span>
+          <span>🟡 2 in a row (play or bench)</span>
+          <span>🔴 3+ in a row (play or bench) or conflict</span>
+          <span style="color:var(--border)">⬜ Unassigned</span>
+          <span>"sub ▾" to substitute</span>
+        </div>
         <table style="border-collapse:collapse;width:100%">
           <thead>
             <tr><th style="text-align:left;padding:6px 8px;font-size:11px;min-width:110px">Player</th>${inningHeaders}</tr>
@@ -2317,6 +2366,7 @@ function showGameModal(isNew){
   showModal(`${header}${tabBtns}${body}
     <div class="row" style="margin-top:14px;gap:8px">
       <button class="btn btn-gold" onclick="saveGame(${isNew})">Save Game</button>
+      <button class="btn btn-blue btn-sm" onclick="printLineupCard()">🖨 Print Lineup Card</button>
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
     </div>`,true);
 }
@@ -2328,7 +2378,10 @@ function updGrid(inning,spot,pid,pos,subPid){
   const existing=EG.inningGrid[inning][spot]||{};
   EG.inningGrid[inning][spot]={...existing,playerId:pid,position:pos};
   const played=new Set();
-  Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{if((c.position||c.subPosition)&&c.playerId)played.add(c.playerId);if(c.subPlayerId)played.add(c.subPlayerId);}));
+  Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{
+    if(c.position&&c.position!=='BN'&&c.playerId)played.add(c.playerId);
+    if(c.subPosition&&c.subPosition!=='BN'&&c.subPlayerId)played.add(c.subPlayerId);
+  }));
   EG.lineup.forEach(e=>{if(played.has(e.playerId)&&!e.inningsPlayed)e.inningsPlayed=1;});
 }
 function updGridSub(inning,spot,origPid,subPid){
@@ -2398,6 +2451,164 @@ function onBODrop(e,targetPid){
   showGameModal(false);
 }
 function tglGPos(pid,pos,btn){if(!EG)return;const e=EG.lineup.find(x=>x.playerId===pid);if(!e)return;e.positions=e.positions.includes(pos)?e.positions.filter(p=>p!==pos):[...e.positions,pos];btn.classList.toggle('on');}
+function printLineupCard(){
+  if(!EG)return;
+  const numInnings=EG.innings||6;
+  const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF'];
+
+  // Build per-inning position map: {inn: {pos: playerName}}
+  const inningMaps={};
+  for(let inn=1;inn<=numInnings;inn++){
+    inningMaps[inn]={};
+    const inningData=EG.inningGrid[inn]||{};
+    Object.values(inningData).forEach(cell=>{
+      const pid=cell.subPlayerId||cell.playerId;
+      const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
+      if(pid&&pos){
+        const p=getPlayer(pid);
+        if(p)inningMaps[inn][pos]=p;
+      }
+    });
+  }
+
+  // All active players sorted by batting order
+  const active=EG.lineup.filter(e=>!e.outForGame).sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
+  const allPos=[...FIELD_POS,'DP','FLEX','EH','BN'];
+
+  // Build inning column headers
+  const innHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;padding:6px 8px;background:#1a1a2e;color:#f0a500;font-size:13px;min-width:80px">Inn ${i+1}</th>`).join('');
+
+  // Build rows — one per player in batting order
+  const playerRows=active.map(ent=>{
+    const p=getPlayer(ent.playerId);if(!p)return'';
+    const cells=Array.from({length:numInnings},(_,inn)=>{
+      const inningData=EG.inningGrid[inn+1]||{};
+      const spot=String(ent.battingSpot||0);
+      const cell=inningData[spot]||{};
+      const subP=cell.subPlayerId?getPlayer(cell.subPlayerId):null;
+      const pos=(subP?cell.subPosition:cell.position)||'';
+      const isBench=pos==='BN'||pos==='';
+      const isConflict=pos&&pos!=='BN'&&conflictCheck(inn+1,pos,spot);
+      const bg=isBench?'#ffeeee':isConflict?'#ffe0e0':'#efffef';
+      const textColor=isBench?'#cc3333':isConflict?'#aa0000':'#1a6b2e';
+      return `<td style="text-align:center;padding:5px 4px;background:${bg};border:1px solid #ddd;font-size:12px">
+        ${pos?`<strong style="color:${textColor}">${pos}</strong>`:
+          `<span style="color:#ccc;font-size:10px">—</span>`}
+        ${subP?`<br/><span style="font-size:9px;color:#7744aa">${esc(subP.name.split(' ')[0])}</span>`:''}
+      </td>`;
+    }).join('');
+    return `<tr>
+      <td style="padding:5px 10px;border:1px solid #ddd;background:#f9f9f9;font-weight:700;font-size:12px;white-space:nowrap">
+        <span style="color:#f0a500;font-weight:900;margin-right:6px">${ent.battingSpot||'—'}.</span>${esc(p.name)}
+      </td>
+      <td style="padding:5px 8px;border:1px solid #ddd;text-align:center;font-size:11px;color:#888">#${esc(p.number||'—')}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  // Missing positions footer
+  const missingFooter=Array.from({length:numInnings},(_,inn)=>{
+    const filled=new Set(Object.values(EG.inningGrid[inn+1]||{}).map(c=>(c.subPlayerId?c.subPosition:c.position)||'').filter(p=>p&&p!=='BN'));
+    const missing=FIELD_POS.filter(p=>!filled.has(p));
+    return `<td style="padding:4px;text-align:center;border:1px solid #ddd;background:#fff8f0;font-size:10px">
+      ${missing.length===0?'<span style="color:#1a6b2e;font-weight:700">✓ Full</span>':
+        missing.map(p=>`<span style="background:#ffdddd;color:#cc3333;border-radius:3px;padding:1px 4px;margin:1px;display:inline-block;font-weight:700">${p}</span>`).join('')}
+    </td>`;
+  }).join('');
+
+  // Alt lineups summary
+  const winRow=active.map(ent=>{
+    const spot=String(ent.battingSpot||0);
+    const pos=(EG.altGrid?.winning[spot]||{}).position||'';
+    const p=getPlayer(ent.playerId);
+    const isBench=pos==='BN'||!pos;
+    return `<td style="text-align:center;padding:4px;border:1px solid #ddd;background:${isBench?'#ffeeee':'#efffef'};font-size:11px;font-weight:700;color:${isBench?'#cc3333':'#1a6b2e'}">${pos||'—'}</td>`;
+  }).join('');
+  const loseRow=active.map(ent=>{
+    const spot=String(ent.battingSpot||0);
+    const pos=(EG.altGrid?.losing[spot]||{}).position||'';
+    const isBench=pos==='BN'||!pos;
+    return `<td style="text-align:center;padding:4px;border:1px solid #ddd;background:${isBench?'#ffeeee':'#efffef'};font-size:11px;font-weight:700;color:${isBench?'#cc3333':'#1a6b2e'}">${pos||'—'}</td>`;
+  }).join('');
+
+  // Out for game
+  const outPlayers=EG.lineup.filter(e=>e.outForGame).map(e=>{const p=getPlayer(e.playerId);return p?esc(p.name):''}).filter(Boolean).join(', ');
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<title>Lineup: vs ${esc(EG.opponent||'TBD')} — ${EG.date}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Helvetica Neue',Arial,sans-serif;padding:16px;color:#1a1a1a;font-size:12px}
+h1{font-size:18px;font-weight:800;margin-bottom:2px}
+.meta{font-size:11px;color:#666;margin-bottom:12px}
+table{width:100%;border-collapse:collapse;margin-bottom:14px}
+.legend{display:flex;gap:14px;font-size:10px;margin-bottom:10px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:4px}
+.legbox{width:14px;height:14px;border-radius:2px;border:1px solid #ccc}
+@media print{body{padding:8px}button{display:none}}
+</style></head>
+<body>
+<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+  <div>
+    <h1>⚡ vs ${esc(EG.opponent||'TBD')}</h1>
+    <div class="meta">${EG.date} &nbsp;|&nbsp; ${numInnings} innings &nbsp;|&nbsp; HAMR Hawks 12U</div>
+  </div>
+  <button onclick="window.print()" style="padding:8px 16px;background:#f0a500;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px">🖨 Print</button>
+</div>
+
+<div class="legend">
+  <div class="leg"><div class="legbox" style="background:#efffef"></div> Playing</div>
+  <div class="leg"><div class="legbox" style="background:#ffeeee"></div> Bench / Not assigned</div>
+  <div class="leg"><div class="legbox" style="background:#f9f9f9"></div> Player name</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;padding:6px 10px;background:#1a1a2e;color:#f0a500;font-size:13px;min-width:140px">Player</th>
+      <th style="padding:6px 8px;background:#1a1a2e;color:#f0a500;font-size:13px;width:36px">#</th>
+      ${innHeaders}
+    </tr>
+  </thead>
+  <tbody>${playerRows}</tbody>
+  <tfoot>
+    <tr>
+      <td colspan="2" style="padding:4px 8px;font-size:10px;font-weight:700;color:#888;border:1px solid #ddd;background:#fffbf0">Missing:</td>
+      ${missingFooter}
+    </tr>
+  </tfoot>
+</table>
+
+${(EG.altGrid&&(Object.values(EG.altGrid.winning||{}).some(c=>c.position)||Object.values(EG.altGrid.losing||{}).some(c=>c.position)))?`
+<table>
+  <thead><tr>
+    <th colspan="2" style="text-align:left;padding:6px 10px;background:#1a1a2e;color:#f0a500;font-size:12px">Alternate Lineups</th>
+    ${active.map(e=>{const p=getPlayer(e.playerId);return`<th style="padding:4px;background:#1a1a2e;color:#ccc;font-size:10px;text-align:center">${p?esc(p.name.split(' ')[0]):'?'}</th>`;}).join('')}
+  </tr></thead>
+  <tbody>
+    <tr><td colspan="2" style="padding:4px 8px;font-size:11px;font-weight:700;color:#1a6b2e;background:#efffef;border:1px solid #ddd">🏆 Winning Big</td>${winRow}</tr>
+    <tr><td colspan="2" style="padding:4px 8px;font-size:11px;font-weight:700;color:#cc3333;background:#ffeeee;border:1px solid #ddd">😤 Down Big</td>${loseRow}</tr>
+  </tbody>
+</table>`:''}
+
+${outPlayers?`<div style="font-size:11px;color:#888;margin-top:8px">Not playing: <strong>${outPlayers}</strong></div>`:''}
+<div style="margin-top:12px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:6px">Generated by ⚡ HAMR Softball Hub</div>
+</body></html>`;
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`Lineup_vs_${(EG.opponent||'TBD').replace(/\s+/g,'_')}_${EG.date}.html`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+// Helper for conflict check in print
+function conflictCheck(inn,pos,excludeSpot){
+  if(!EG||!pos||pos==='BN')return false;
+  const inningData=EG.inningGrid[inn]||{};
+  return Object.entries(inningData).filter(([s])=>s!==excludeSpot).some(([,c])=>(c.subPlayerId?c.subPosition:c.position)===pos);
+}
+
 function saveGame(isNew){if(!EG)return;
   EG.opponent=document.getElementById('g-opp')?.value||EG.opponent;
   EG.date=document.getElementById('g-date')?.value||EG.date;
@@ -2405,12 +2616,18 @@ function saveGame(isNew){if(!EG)return;
   if(EG.inningGrid&&Object.keys(EG.inningGrid).length){
     const pInnings={};
     Object.entries(EG.inningGrid).forEach(([inn,spots])=>{
-      Object.values(spots).forEach(c=>{if(c.position&&c.playerId)pInnings[c.playerId]=(pInnings[c.playerId]||0)+1;});
+      Object.values(spots).forEach(c=>{if(c.position&&c.position!=='BN'&&c.playerId)pInnings[c.playerId]=(pInnings[c.playerId]||0)+1;});
     });
     EG.lineup.forEach(e=>{if(pInnings[e.playerId]!==undefined)e.inningsPlayed=pInnings[e.playerId];});
   }
   if(isNew)DB.games.push(EG);else{const i=DB.games.findIndex(g=>g.id===EG.id);if(i>=0)DB.games[i]=EG;}
-  closeModal();scheduleSave();renderTab();updateCounts();
+  scheduleSave();updateCounts();
+  // Stay in editor — just re-render modal with updated data
+  showGameModal(false);
+  setTimeout(()=>{
+    const btn=document.querySelector('[onclick^="saveGame"]');
+    if(btn){const orig=btn.textContent;btn.textContent='✓ Saved!';btn.style.background='var(--green)';btn.style.color='#000';setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.color='';},1800);}
+  },50);
 }
 function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();renderTab();updateCounts();}
 function showPT(){
