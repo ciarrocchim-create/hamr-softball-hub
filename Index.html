@@ -2218,6 +2218,7 @@ function showGameModal(isNew){
           const c=EG.inningGrid[i+1]?.[spot]||{};
           return (c.subPlayerId?c.subPosition:c.position)||'';
         });
+        const totalBenchInnings=playerPosArr.filter(p=>p==='BN').length;
         // Compute consecutive streak for each inning
         // streak[i] = {playStreak, benchStreak} ending AT inning i
         const streaks=playerPosArr.map((pos,i)=>{
@@ -2254,11 +2255,13 @@ function showGameModal(isNew){
           } else if(isPlaying&&playStreak>=3){
             cellBg='rgba(240,165,0,.22)';cellBorder='var(--gold)';streakLabel=`<div style="font-size:9px;color:var(--gold);font-weight:700">${playStreak} in a row</div>`;
           } else if(isBench&&benchStreak>=3){
-            cellBg='rgba(241,107,107,.22)';cellBorder='var(--red)';streakLabel=`<div style="font-size:9px;color:var(--red);font-weight:700">${benchStreak} bench</div>`;
+            cellBg='rgba(241,107,107,.22)';cellBorder='var(--red)';streakLabel=`<div style="font-size:9px;color:var(--red);font-weight:700">${benchStreak} bench row</div>`;
           } else if(isBench&&benchStreak>=2){
-            cellBg='rgba(240,165,0,.18)';cellBorder='var(--gold)';streakLabel=`<div style="font-size:9px;color:var(--gold);font-weight:700">${benchStreak} bench</div>`;
+            cellBg='rgba(240,165,0,.18)';cellBorder='var(--gold)';streakLabel=`<div style="font-size:9px;color:var(--gold);font-weight:700">${benchStreak} bench row</div>`;
           } else if(isPlaying){
             cellBg='var(--green)18';cellBorder='var(--green)44';
+          } else if(isBench&&totalBenchInnings>2){
+            cellBg='rgba(241,107,107,.18)';cellBorder='var(--red)44';streakLabel=`<div style="font-size:9px;color:var(--red);font-weight:700">${totalBenchInnings} bench total</div>`;
           } else if(isBench){
             cellBg='var(--dim)';cellBorder='var(--border)';
           } else {
@@ -2434,16 +2437,16 @@ function onBODrop(e,targetPid){
   e.preventDefault();
   document.querySelectorAll('#bo-tbody tr').forEach(r=>r.style.background='');
   if(!_boDrag||_boDrag===targetPid||!EG)return;
-  // Get ordered active players (no out-for-game)
-  const active=EG.lineup.filter(x=>!x.outForGame).sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
-  const fromIdx=active.findIndex(x=>x.playerId===_boDrag);
-  const toIdx=active.findIndex(x=>x.playerId===targetPid);
-  if(fromIdx<0||toIdx<0)return;
-  // Reorder
-  const moved=active.splice(fromIdx,1)[0];
-  active.splice(toIdx,0,moved);
-  // Reassign sequential batting spots
-  active.forEach((ent,i)=>{
+  // Only reorder players who have a batting spot assigned (>0), exclude unspotted + out
+  const withSpot=EG.lineup.filter(x=>!x.outForGame&&x.battingSpot>0).sort((a,b)=>a.battingSpot-b.battingSpot);
+  const fromIdx=withSpot.findIndex(x=>x.playerId===_boDrag);
+  const toIdx=withSpot.findIndex(x=>x.playerId===targetPid);
+  if(fromIdx<0||toIdx<0){_boDrag=null;return;}
+  // Reorder within the spotted players only
+  const moved=withSpot.splice(fromIdx,1)[0];
+  withSpot.splice(toIdx,0,moved);
+  // Reassign sequential batting spots to only these players — unspotted stay at 0
+  withSpot.forEach((ent,i)=>{
     const lineupEnt=EG.lineup.find(x=>x.playerId===ent.playerId);
     if(lineupEnt)lineupEnt.battingSpot=i+1;
   });
