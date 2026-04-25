@@ -2213,15 +2213,57 @@ function showGameModal(isNew){
         const p=getPlayer(ent.playerId);if(!p)return'';
         const spot=String(ent.battingSpot||0);
 
+        // Pre-compute all positions for this player across all innings
+        const playerPosArr=Array.from({length:numInnings},(_,i)=>{
+          const c=EG.inningGrid[i+1]?.[spot]||{};
+          return (c.subPlayerId?c.subPosition:c.position)||'';
+        });
+        // Compute consecutive streak for each inning
+        // streak[i] = {playStreak, benchStreak} ending AT inning i
+        const streaks=playerPosArr.map((pos,i)=>{
+          const isPlaying=pos&&pos!=='BN';
+          const isBench=pos==='BN';
+          const isUnset=!pos;
+          let playStreak=0,benchStreak=0;
+          if(isPlaying){
+            for(let j=i;j>=0;j--){const p=playerPosArr[j];if(p&&p!=='BN')playStreak++;else break;}
+          }
+          if(isBench){
+            for(let j=i;j>=0;j--){if(playerPosArr[j]==='BN')benchStreak++;else break;}
+          }
+          return{playStreak,benchStreak};
+        });
+
         const regularCells=Array.from({length:numInnings},(_,inn)=>{
           const inningData=EG.inningGrid[inn+1]||{};
           const cell=inningData[spot]||{};
           const subP=cell.subPlayerId?getPlayer(cell.subPlayerId):null;
           const activePid=subP?cell.subPlayerId:ent.playerId;
           const curPos=(subP?cell.subPosition:cell.position)||'';
-          const isConflict=curPos&&conflictMap[inn+1]?.has(curPos);
-          const cellBg=isConflict?'var(--red)22':curPos?'var(--green)18':'var(--surface)';
-          const cellBorder=isConflict?'var(--red)':curPos?'var(--green)44':'var(--border)';
+          const isConflict=curPos&&curPos!=='BN'&&conflictMap[inn+1]?.has(curPos);
+          const isBench=curPos==='BN';
+          const isPlaying=curPos&&!isBench;
+          const {playStreak,benchStreak}=streaks[inn];
+
+          // Consecutive warnings override normal coloring
+          let cellBg,cellBorder,streakLabel='';
+          if(isConflict){
+            cellBg='var(--red)33';cellBorder='var(--red)';
+          } else if(isPlaying&&playStreak>=3){
+            cellBg='rgba(241,107,107,.28)';cellBorder='var(--red)';streakLabel=`<div style="font-size:9px;color:var(--red);font-weight:700">${playStreak} in a row</div>`;
+          } else if(isPlaying&&playStreak===2){
+            cellBg='rgba(240,165,0,.22)';cellBorder='var(--gold)';streakLabel=`<div style="font-size:9px;color:var(--gold);font-weight:700">2 in a row</div>`;
+          } else if(isBench&&benchStreak>=3){
+            cellBg='rgba(241,107,107,.22)';cellBorder='var(--red)';streakLabel=`<div style="font-size:9px;color:var(--red);font-weight:700">${benchStreak} bench</div>`;
+          } else if(isBench&&benchStreak===2){
+            cellBg='rgba(240,165,0,.18)';cellBorder='var(--gold)';streakLabel=`<div style="font-size:9px;color:var(--gold);font-weight:700">2 bench</div>`;
+          } else if(isPlaying){
+            cellBg='var(--green)18';cellBorder='var(--green)44';
+          } else if(isBench){
+            cellBg='var(--dim)';cellBorder='var(--border)';
+          } else {
+            cellBg='var(--surface)';cellBorder='var(--border)';
+          }
 
           // Sub player options
           const subOpts=`<option value="">— no sub —</option>${subPlayers.filter(sp=>sp.id!==ent.playerId).map(sp=>`<option value="${sp.id}"${cell.subPlayerId===sp.id?' selected':''}>${esc(sp.name.split(' ')[0])}</option>`).join('')}`;
@@ -2233,6 +2275,7 @@ function showGameModal(isNew){
               ${posOpts.replace(`value="${curPos}"`,`value="${curPos}" selected`)}
             </select>
             ${isConflict?`<div style="font-size:9px;color:var(--red);font-weight:700">⚠ conflict</div>`:''}
+            ${streakLabel}
             <details style="margin-top:2px">
               <summary style="font-size:9px;color:var(--muted);cursor:pointer;list-style:none;text-align:center">sub ▾</summary>
               <select style="width:68px;font-size:10px;margin-top:2px" onchange="updGridSub(${inn+1},'${spot}','${ent.playerId}',this.value)">
@@ -2294,7 +2337,13 @@ function showGameModal(isNew){
 
       body=`<div style="overflow-x:auto">
         ${anyConflict?'<div style="background:var(--red)18;border:1px solid var(--red)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:8px">⚠ Position conflicts detected — same position assigned to two players in the same inning</div>':''}
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Green = assigned &nbsp;|&nbsp; Red = conflict &nbsp;|&nbsp; "sub ▾" = substitute a player into that inning's spot</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px;display:flex;gap:12px;flex-wrap:wrap">
+          <span>🟢 Playing</span>
+          <span>🟡 2 in a row (play or bench)</span>
+          <span>🔴 3+ in a row (play or bench) or conflict</span>
+          <span style="color:var(--border)">⬜ Unassigned</span>
+          <span>"sub ▾" to substitute</span>
+        </div>
         <table style="border-collapse:collapse;width:100%">
           <thead>
             <tr><th style="text-align:left;padding:6px 8px;font-size:11px;min-width:110px">Player</th>${inningHeaders}</tr>
