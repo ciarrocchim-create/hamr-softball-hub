@@ -2142,12 +2142,18 @@ function showGameModal(isNew){
           ondragend="onBODragEnd(event)"
           ondragover="onBODragOver(event,'${ent.playerId}')"
           ondrop="onBODrop(event,'${ent.playerId}')"
-          style="opacity:${isOut?'.45':'1'};background:${isOut?'var(--dim)':'transparent'};transition:.1s;cursor:${isOut?'default':'grab'}">
+          style="opacity:${isOut?'.45':'1'};background:${isOut?'var(--dim)':'transparent'};transition:.1s">
         <td style="padding:5px 6px;width:20px">
           ${isOut?'':`<span style="color:var(--muted);font-size:16px;cursor:grab;user-select:none" title="Drag to reorder">⠿</span>`}
         </td>
-        <td style="padding:5px 4px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold);width:28px;text-align:center">
-          ${spot||'—'}
+        <td style="padding:3px 4px;width:52px">
+          <input type="number" min="1" max="30"
+            value="${spot||''}"
+            placeholder="—"
+            ${isOut?'disabled':''}
+            style="width:48px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold);background:transparent;border:1px solid var(--border);border-radius:6px;padding:2px 4px"
+            onchange="setBattingSpot('${ent.playerId}',this.value)"
+          />
         </td>
         <td style="padding:5px 8px;font-weight:600;white-space:nowrap;font-size:12px">
           #${esc(p.number||'—')} ${esc(p.name.split(' ')[0])} ${esc(p.name.split(' ').slice(1).join(' '))}
@@ -2421,6 +2427,26 @@ function copyInning(fromInn){
   showGameModal(!DB.plans.find(p=>p.id===EG?.id));
 }
 function updGL(pid,f,v){if(EG){const e=EG.lineup.find(x=>x.playerId===pid);if(e)e[f]=v;}}
+function setBattingSpot(pid,val){
+  if(!EG)return;
+  const spot=parseInt(val)||0;
+  const e=EG.lineup.find(x=>x.playerId===pid);
+  if(!e)return;
+  // Save old spot for inningGrid remap
+  const oldSpot=e.battingSpot;
+  const oldSpotToPid={};
+  EG.lineup.forEach(x=>{if(x.battingSpot>0)oldSpotToPid[x.battingSpot]=x.playerId;});
+  e.battingSpot=spot;
+  // Remap inningGrid: move this player's assignments from old slot to new slot
+  if(oldSpot&&spot&&oldSpot!==spot&&EG.inningGrid){
+    Object.values(EG.inningGrid).forEach(inningData=>{
+      if(inningData[oldSpot]&&inningData[oldSpot].playerId===pid){
+        inningData[spot]=inningData[oldSpot];
+        delete inningData[oldSpot];
+      }
+    });
+  }
+}
 
 // ── Batting order drag and drop ──────────────────────────
 let _boDrag=null;
