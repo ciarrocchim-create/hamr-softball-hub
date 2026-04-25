@@ -2063,6 +2063,49 @@ function swSave(){
 
 // ═══ LINEUPS ══════════════════════════════════════════════
 let EG=null;
+function migrateInningGrid(){
+  if(!EG||!EG.inningGrid)return;
+  // Old format: {inn:{spot:{playerId,position,...}}}
+  // New format: {inn:{playerId:{position,...}}}
+  // Detect old format by checking if any cell value has a `playerId` property
+  const validPids=new Set((EG.lineup||[]).map(e=>e.playerId));
+  const newGrid={};
+  let migrated=false;
+  Object.entries(EG.inningGrid).forEach(([inn,cells])=>{
+    newGrid[inn]={};
+    Object.entries(cells).forEach(([key,cell])=>{
+      if(cell&&typeof cell==='object'&&cell.playerId&&validPids.has(cell.playerId)){
+        // Old format: key is batting spot, value has playerId
+        // Migrate to new format: key is playerId
+        const pid=cell.playerId;
+        const {playerId:_,...rest}=cell;
+        if(!newGrid[inn][pid])newGrid[inn][pid]=rest; // don't overwrite if new entry exists
+        migrated=true;
+      } else if(cell&&typeof cell==='object'&&!cell.playerId){
+        // New format: key is playerId, keep as-is
+        newGrid[inn][key]=cell;
+      }
+    });
+  });
+  if(migrated){
+    EG.inningGrid=newGrid;
+    console.log('Migrated inningGrid from spot-keys to pid-keys');
+  }
+  // Also migrate altGrid if needed
+  ['winning','losing'].forEach(scenario=>{
+    if(!EG.altGrid?.[scenario])return;
+    const newAlt={};
+    Object.entries(EG.altGrid[scenario]).forEach(([key,cell])=>{
+      if(cell&&cell.playerId&&validPids.has(cell.playerId)){
+        newAlt[cell.playerId]={position:cell.position||''};
+        migrated=true;
+      } else if(validPids.has(key)){
+        newAlt[key]=cell;
+      }
+    });
+    EG.altGrid[scenario]=newAlt;
+  });
+}
 function renderLineups(){
   const sorted=[...DB.games].sort((a,b)=>b.date.localeCompare(a.date));
   const rows=sorted.length===0?'<div class="empty">No games logged yet.</div>':
@@ -2106,6 +2149,8 @@ function editGame(id){
     DB.players.filter(p=>!ids.has(p.id)).forEach(p=>EG.lineup.push({playerId:p.id,battingSpot:0,positions:[],inningsPlayed:0}));
     if(!EG.inningGrid)EG.inningGrid={};
     if(!EG.altGrid)EG.altGrid={winning:{},losing:{}};
+    // Migrate old inningGrid format (keyed by batting spot) to new format (keyed by playerId)
+    migrateInningGrid();
   }
   _gTab='lineup';
   showGameModal(isNew);
