@@ -2310,7 +2310,10 @@ function showGameModal(isNew){
 
         const spotBadge=ent.battingSpot?`<span style="color:var(--gold);font-weight:800;font-size:13px;min-width:18px;display:inline-block">${ent.battingSpot}.</span>`:`<span style="color:var(--dim);font-size:11px">—</span>`;
         return `<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px;white-space:nowrap;font-size:12px;font-weight:600;min-width:110px">${spotBadge} ${esc(p.name.split(' ')[0])} <span style="color:var(--muted);font-size:10px">#${esc(p.number||'')}</span></td>
+          <td style="padding:6px 8px;white-space:nowrap;font-size:12px;font-weight:600;min-width:110px">
+            ${spotBadge} ${esc(p.name.split(' ')[0])} <span style="color:var(--muted);font-size:10px">#${esc(p.number||'')}</span>
+            ${totalBenchInnings>0?`<span style="display:inline-block;margin-left:4px;font-size:10px;font-weight:800;padding:1px 6px;border-radius:10px;background:${totalBenchInnings>2?'var(--red)33':totalBenchInnings>0?'var(--gold)22':'var(--dim)'};color:${totalBenchInnings>2?'var(--red)':totalBenchInnings>0?'var(--gold)':'var(--muted)'}">BN:${totalBenchInnings}</span>`:''}
+          </td>
           ${regularCells}${altCells}
         </tr>`;
       }).join('');
@@ -2324,7 +2327,7 @@ function showGameModal(isNew){
       const anyConflict=Object.values(conflictMap).some(s=>s.size>0);
 
       // Build "missing positions" footer row per inning
-      const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF'];
+      const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX'];
       const missingRows=Array.from({length:numInnings},(_,inn)=>{
         const inningData=EG.inningGrid[inn+1]||{};
         const filled=new Set(Object.values(inningData).map(c=>(c.subPlayerId?c.subPosition:c.position)||'').filter(p=>p&&p!=='BN'));
@@ -2437,19 +2440,46 @@ function onBODrop(e,targetPid){
   e.preventDefault();
   document.querySelectorAll('#bo-tbody tr').forEach(r=>r.style.background='');
   if(!_boDrag||_boDrag===targetPid||!EG)return;
-  // Only reorder players who have a batting spot assigned (>0), exclude unspotted + out
-  const withSpot=EG.lineup.filter(x=>!x.outForGame&&x.battingSpot>0).sort((a,b)=>a.battingSpot-b.battingSpot);
-  const fromIdx=withSpot.findIndex(x=>x.playerId===_boDrag);
-  const toIdx=withSpot.findIndex(x=>x.playerId===targetPid);
+
+  // Work with ALL non-out players so order is consistent with what's displayed
+  const active=EG.lineup.filter(x=>!x.outForGame).sort((a,b)=>(a.battingSpot||999)-(b.battingSpot||999));
+  const fromIdx=active.findIndex(x=>x.playerId===_boDrag);
+  const toIdx=active.findIndex(x=>x.playerId===targetPid);
   if(fromIdx<0||toIdx<0){_boDrag=null;return;}
-  // Reorder within the spotted players only
-  const moved=withSpot.splice(fromIdx,1)[0];
-  withSpot.splice(toIdx,0,moved);
-  // Reassign sequential batting spots to only these players — unspotted stay at 0
-  withSpot.forEach((ent,i)=>{
+
+  // Reorder
+  const moved=active.splice(fromIdx,1)[0];
+  active.splice(toIdx,0,moved);
+
+  // Save old spot→playerId map before renumbering (for inningGrid remap)
+  const oldSpotToPid={};
+  EG.lineup.forEach(e=>{if(e.battingSpot>0)oldSpotToPid[e.battingSpot]=e.playerId;});
+
+  // Reassign sequential spots to ALL active players in their new order
+  // Players who previously had no spot get one now; that's intentional when dragging
+  active.forEach((ent,i)=>{
     const lineupEnt=EG.lineup.find(x=>x.playerId===ent.playerId);
     if(lineupEnt)lineupEnt.battingSpot=i+1;
   });
+
+  // Build new pid→spot map
+  const newPidToSpot={};
+  EG.lineup.forEach(e=>{if(e.battingSpot>0)newPidToSpot[e.playerId]=e.battingSpot;});
+
+  // Remap inningGrid keys so position assignments follow the player, not the old spot
+  if(EG.inningGrid){
+    const newGrid={};
+    Object.entries(EG.inningGrid).forEach(([inn,spots])=>{
+      newGrid[inn]={};
+      Object.entries(spots).forEach(([oldSpot,cell])=>{
+        const pid=oldSpotToPid[oldSpot];
+        const newSpot=pid?newPidToSpot[pid]:null;
+        if(newSpot)newGrid[inn][newSpot]={...cell};
+      });
+    });
+    EG.inningGrid=newGrid;
+  }
+
   _boDrag=null;
   showGameModal(false);
 }
@@ -2457,7 +2487,7 @@ function tglGPos(pid,pos,btn){if(!EG)return;const e=EG.lineup.find(x=>x.playerId
 function printLineupCard(){
   if(!EG)return;
   const numInnings=EG.innings||6;
-  const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF'];
+  const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX'];
 
   // Build per-inning position map: {inn: {pos: playerName}}
   const inningMaps={};
