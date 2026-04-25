@@ -345,6 +345,7 @@ const METRIC_TYPES = [
 </script>
 <script>
 // ═══ CONSTANTS ═══════════════════════════════════════════
+const BUILD_TIME='April 25, 2026 at 07:06 PM UTC';
 const POSITIONS=['P','C','1B','2B','3B','SS','LF','CF','RF','DP','FLEX','EH'];
 const DRILL_CATS=['Hitting','Pitching','Fielding','Catching','Baserunning','Conditioning','Other'];
 const DRILL_TYPES=['Drill','Tip','Warmup','Progression'];
@@ -456,7 +457,7 @@ async function doRefresh(){
 }
 function updateCounts(){
   const el=document.getElementById('hdr-counts');if(!el)return;
-  el.innerHTML=`<span><strong>${DB.players.length}</strong> players</span><span><strong>${DB.drills.length}</strong> drills</span><span><strong>${DB.games.length}</strong> games</span>`;
+  el.innerHTML=`<span><strong>${DB.players.length}</strong> players</span><span><strong>${DB.drills.length}</strong> drills</span><span><strong>${DB.games.length}</strong> games</span><span style="color:var(--muted);font-size:10px;border-left:1px solid var(--border);padding-left:10px;margin-left:2px">Built ${BUILD_TIME}</span>`;
 }
 
 // ═══ MODAL ══════════════════════════════════════════════
@@ -2063,6 +2064,106 @@ function swSave(){
 
 // ═══ LINEUPS ══════════════════════════════════════════════
 let EG=null;
+
+function showFieldView(inning){
+  if(!EG)return;
+  const inningData=EG.inningGrid[inning]||{};
+
+  // Build position→player map for this inning
+  const posMap={};
+  Object.entries(inningData).forEach(([pid,cell])=>{
+    const effPid=cell.subPlayerId||pid;
+    const effPos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
+    if(effPos&&effPos!=='BN'){
+      const p=getPlayer(effPid);
+      if(p)posMap[effPos]=p;
+    }
+  });
+
+  // Field SVG positions (% of 480x440 viewBox)
+  // Softball field: home plate at bottom center, outfield at top
+  const POS_COORDS={
+    'P':  {x:240,y:248,label:'P'},
+    'C':  {x:240,y:345,label:'C'},
+    '1B': {x:330,y:270,label:'1B'},
+    '2B': {x:275,y:195,label:'2B'},
+    '3B': {x:150,y:270,label:'3B'},
+    'SS': {x:205,y:205,label:'SS'},
+    'LF': {x:110,y:110,label:'LF'},
+    'CF': {x:240,y:70,label:'CF'},
+    'RF': {x:365,y:110,label:'RF'},
+    'FLEX':{x:420,y:360,label:'FLEX'},
+    'DP': {x:60,y:360,label:'DP'},
+    'EH': {x:420,y:200,label:'EH'},
+  };
+
+  // Build player chips for each position
+  const chips=Object.entries(POS_COORDS).map(([pos,{x,y,label}])=>{
+    const p=posMap[pos];
+    const hasPlayer=!!p;
+    const name=p?p.name.split(' ')[0]:'?';
+    const num=p?('#'+p.number):'';
+    return `<g transform="translate(${x},${y})">
+      <rect x="-36" y="-18" width="72" height="36" rx="8"
+        fill="${hasPlayer?'#1c2236':'#0b0f1a'}"
+        stroke="${hasPlayer?'#f0a500':'#2b3454'}"
+        stroke-width="${hasPlayer?2:1}"/>
+      <text y="-4" text-anchor="middle" font-family="Barlow Condensed,sans-serif"
+        font-weight="900" font-size="11" fill="${hasPlayer?'#f0a500':'#2b3454'}">${label}</text>
+      <text y="9" text-anchor="middle" font-family="DM Sans,sans-serif"
+        font-size="9" fill="${hasPlayer?'#e6eaf4':'#2b3454'}" font-weight="600">${hasPlayer?name:''}</text>
+      <text y="19" text-anchor="middle" font-family="DM Sans,sans-serif"
+        font-size="8" fill="${hasPlayer?'#7b88a8':'#2b3454'}">${hasPlayer?num:''}</text>
+    </g>`;
+  }).join('');
+
+  // Bench players
+  const bench=EG.lineup.filter(e=>!e.outForGame).filter(e=>{
+    const cell=inningData[e.playerId]||{};
+    const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
+    return pos==='BN'||!pos;
+  });
+  const benchHtml=bench.length?bench.map(e=>{const p=getPlayer(e.playerId);return p?`<span class="badge" style="background:var(--dim);color:var(--muted);margin:2px">${esc(p.name.split(' ')[0])} <span style="color:var(--border)">#${esc(p.number||'')}</span></span>`:''}).join(''):'<span style="color:var(--muted);font-size:12px">—</span>';
+
+  const svg=`<svg viewBox="0 0 480 440" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:480px;display:block;margin:0 auto">
+    <!-- Sky/outfield background -->
+    <rect width="480" height="440" fill="#0b1a0b"/>
+    <!-- Outfield grass arc -->
+    <path d="M30,390 Q240,20 450,390 Z" fill="#1a3a1a"/>
+    <!-- Infield dirt diamond area -->
+    <path d="M240,340 L330,265 L240,190 L150,265 Z" fill="#3d2a1a"/>
+    <!-- Base paths -->
+    <line x1="240" y1="340" x2="330" y2="265" stroke="#5a3d1f" stroke-width="2"/>
+    <line x1="330" y1="265" x2="240" y2="190" stroke="#5a3d1f" stroke-width="2"/>
+    <line x1="240" y1="190" x2="150" y2="265" stroke="#5a3d1f" stroke-width="2"/>
+    <line x1="150" y1="265" x2="240" y2="340" stroke="#5a3d1f" stroke-width="2"/>
+    <!-- Foul lines -->
+    <line x1="240" y1="340" x2="30" y2="30" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
+    <line x1="240" y1="340" x2="450" y2="30" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
+    <!-- Pitcher's circle -->
+    <circle cx="240" cy="248" r="18" fill="#4a3520" stroke="#5a4530" stroke-width="1"/>
+    <!-- Bases -->
+    <rect x="226" y="326" width="28" height="28" rx="3" fill="#e8e0d0" stroke="#ccc"/>
+    <rect x="316" y="251" width="28" height="28" rx="3" fill="#e8e0d0" stroke="#ccc"/>
+    <rect x="226" y="176" width="28" height="28" rx="3" fill="#e8e0d0" stroke="#ccc"/>
+    <rect x="136" y="251" width="28" height="28" rx="3" fill="#e8e0d0" stroke="#ccc"/>
+    <!-- Inning label -->
+    <text x="240" y="428" text-anchor="middle" font-family="Barlow Condensed,sans-serif"
+      font-weight="900" font-size="16" fill="#f0a500" letter-spacing="2">INNING ${inning}</text>
+    <!-- Player chips -->
+    ${chips}
+  </svg>`;
+
+  showModal(`${mhdr(`🏟 Field View — Inning ${inning}`)}
+    ${svg}
+    <div style="margin-top:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">On Bench</div>
+      <div>${benchHtml}</div>
+    </div>
+    <button class="btn btn-dim" style="margin-top:14px;width:100%" onclick="showGameModal(false)">← Back to Lineup</button>
+  `,true);
+}
+
 function migrateInningGrid(){
   if(!EG||!EG.inningGrid)return;
   // Old format: {inn:{spot:{playerId,position,...}}}
@@ -2246,7 +2347,7 @@ function showGameModal(isNew){
       // Build the grid - rows=batting spots, cols=innings + 2 alt scenarios
       if(!EG.altGrid)EG.altGrid={winning:{},losing:{}};
 
-      const inningHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;min-width:72px;padding:6px 4px;font-size:11px;color:var(--muted)">Inn ${i+1}</th>`).join('')
+      const inningHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;min-width:72px;padding:4px 4px;font-size:11px;color:var(--muted)">Inn ${i+1}<br/><button class="btn btn-dim btn-xs" style="margin-top:3px;font-size:9px;padding:2px 5px" onclick="showFieldView(${i+1})">🏟 View</button></th>`).join('')
         +`<th style="width:8px;background:var(--navy)"></th>`
         +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--green);background:var(--green)0a;border-left:3px solid var(--green)44">🏆 Winning<br/><span style="font-size:9px;font-weight:400;opacity:.7">Big lead</span></th>`
         +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--red);background:var(--red)0a;border-left:2px solid var(--red)33">😤 Down Big<br/><span style="font-size:9px;font-weight:400;opacity:.7">Comeback mode</span></th>`;
