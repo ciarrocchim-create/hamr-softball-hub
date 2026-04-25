@@ -2327,7 +2327,7 @@ function showGameModal(isNew){
       const anyConflict=Object.values(conflictMap).some(s=>s.size>0);
 
       // Build "missing positions" footer row per inning
-      const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF'];
+      const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX'];
       const missingRows=Array.from({length:numInnings},(_,inn)=>{
         const inningData=EG.inningGrid[inn+1]||{};
         const filled=new Set(Object.values(inningData).map(c=>(c.subPlayerId?c.subPosition:c.position)||'').filter(p=>p&&p!=='BN'));
@@ -2487,7 +2487,7 @@ function tglGPos(pid,pos,btn){if(!EG)return;const e=EG.lineup.find(x=>x.playerId
 function printLineupCard(){
   if(!EG)return;
   const numInnings=EG.innings||6;
-  const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF'];
+  const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX'];
 
   // Build per-inning position map: {inn: {pos: playerName}}
   const inningMaps={};
