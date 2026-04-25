@@ -2126,42 +2126,52 @@ function showGameModal(isNew){
 
   let body='';
   if(_gTab==='lineup'){
-    // Detect duplicate batting spots
-    const spotCounts={};
-    EG.lineup.forEach(e=>{if(e.battingSpot>0)spotCounts[e.battingSpot]=(spotCounts[e.battingSpot]||0)+1;});
-    const dupSpots=new Set(Object.entries(spotCounts).filter(([,c])=>c>1).map(([s])=>parseInt(s)));
+    // Split into active (in order) and bench (no spot or out)
+    const active=[...EG.lineup].filter(e=>!e.outForGame).sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
+    const bench=EG.lineup.filter(e=>e.outForGame);
 
-    const ordered=[...EG.lineup].sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
-    const rows=ordered.map(ent=>{
+    const makeRow=(ent,idx)=>{
       const p=getPlayer(ent.playerId);if(!p)return'';
       const isOut=ent.outForGame||false;
-      const isDupSpot=ent.battingSpot>0&&dupSpots.has(ent.battingSpot);
-      const bOpts=`<option value="">—</option>${Array.from({length:DB.players.length+2},(_,i)=>`<option value="${i+1}"${ent.battingSpot===i+1?' selected':''}>${i+1}</option>`).join('')}`;
+      const spot=ent.battingSpot||0;
       const pbtn=POSITIONS.map(pos=>`<button type="button" class="tog btn-xs${(ent.positions||[]).includes(pos)?' on':''}" ${isOut?'disabled':''} onclick="tglGPos('${ent.playerId}','${pos}',this)">${pos}</button>`).join('');
-      return `<tr style="opacity:${isOut?'.45':'1'};background:${isOut?'var(--dim)':'transparent'}">
-        <td style="padding:5px 8px;font-weight:600;white-space:nowrap;font-size:12px">
-          #${esc(p.number||'—')} ${esc(p.name.split(' ')[0])}
-          ${isOut?'<span class="badge" style="background:var(--red)22;color:var(--red);font-size:9px;margin-left:4px">OUT</span>':''}
+      return `<tr id="bo-row-${ent.playerId}"
+          draggable="${isOut?'false':'true'}"
+          ondragstart="onBODragStart(event,'${ent.playerId}')"
+          ondragend="onBODragEnd(event)"
+          ondragover="onBODragOver(event,'${ent.playerId}')"
+          ondrop="onBODrop(event,'${ent.playerId}')"
+          style="opacity:${isOut?'.45':'1'};background:${isOut?'var(--dim)':'transparent'};transition:.1s;cursor:${isOut?'default':'grab'}">
+        <td style="padding:5px 6px;width:20px">
+          ${isOut?'':`<span style="color:var(--muted);font-size:16px;cursor:grab;user-select:none" title="Drag to reorder">⠿</span>`}
         </td>
-        <td style="padding:5px 8px">
-          <select style="width:55px;font-size:12px;border-color:${isDupSpot?'var(--red)':'var(--border)'}${isDupSpot?';background:var(--red)18':''}" onchange="updGL('${ent.playerId}','battingSpot',parseInt(this.value)||0);showGameModal(${isOut})" ${isOut?'disabled':''}>
-            ${bOpts}
-          </select>
-          ${isDupSpot?'<span style="color:var(--red);font-size:10px;font-weight:700;display:block">⚠ dup</span>':''}
+        <td style="padding:5px 4px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold);width:28px;text-align:center">
+          ${spot||'—'}
+        </td>
+        <td style="padding:5px 8px;font-weight:600;white-space:nowrap;font-size:12px">
+          #${esc(p.number||'—')} ${esc(p.name.split(' ')[0])} ${esc(p.name.split(' ').slice(1).join(' '))}
+          ${isOut?'<span class="badge" style="background:var(--red)22;color:var(--red);font-size:9px;margin-left:4px">OUT</span>':''}
         </td>
         <td style="padding:5px 8px"><input type="number" value="${ent.inningsPlayed||''}" placeholder="0" style="width:50px;text-align:center;font-size:12px" min="0" ${isOut?'disabled':''} onchange="updGL('${ent.playerId}','inningsPlayed',parseInt(this.value)||0)"/></td>
         <td style="padding:5px 8px"><div class="row" style="gap:3px;flex-wrap:wrap">${pbtn}</div></td>
         <td style="padding:5px 8px">
-          <button class="btn btn-xs ${isOut?'btn-gold':'btn-dim'}" onclick="updGL('${ent.playerId}','outForGame',${!isOut});showGameModal(${!DB.plans?.find?.(p=>p.id===EG?.id)})">
-            ${isOut?'↩ Return':'Out'}
+          <button class="btn btn-xs ${isOut?'btn-gold':'btn-dim'}" onclick="updGL('${ent.playerId}','outForGame',${!isOut});showGameModal(false)">
+            ${isOut?'↩ In':'Out'}
           </button>
         </td>
       </tr>`;
-    }).join('');
-    const dupWarn=dupSpots.size?`<div style="background:var(--red)18;border:1px solid var(--red)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:10px">⚠ Duplicate batting order spots: ${[...dupSpots].join(', ')} — fix before planning innings</div>`:'';
-    body=`${dupWarn}<div style="overflow-x:auto"><table>
-      <thead><tr><th>Player</th><th>Bat #</th><th>Inn.</th><th>Positions</th><th>Status</th></tr></thead>
-      <tbody>${rows}</tbody></table></div>`;
+    };
+
+    const activeRows=active.map((e,i)=>makeRow(e,i)).join('');
+    const benchRows=bench.map((e,i)=>makeRow(e,i)).join('');
+
+    body=`<div style="font-size:11px;color:var(--muted);margin-bottom:8px">⠿ Drag players to set batting order. Numbers update automatically.</div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+      <thead><tr><th style="width:20px"></th><th style="width:28px">Bat #</th><th>Player</th><th>Inn.</th><th>Positions</th><th>Status</th></tr></thead>
+      <tbody id="bo-tbody">${activeRows}
+      ${benchRows?`<tr><td colspan="6" style="padding:8px;font-size:11px;color:var(--muted);border-top:2px solid var(--border)">Not playing this game:</td></tr>${benchRows}`:''}
+      </tbody>
+    </table></div>`;
 
   } else {
     // Inning-by-inning grid planner
@@ -2170,7 +2180,7 @@ function showGameModal(isNew){
     const unset=EG.lineup.filter(e=>!e.battingSpot||e.battingSpot===0);
     const allInOrder=[...ordered,...unset];
     const numInnings=EG.innings||6;
-    const posOpts=`<option value="">—</option>${POSITIONS.map(pos=>`<option value="${pos}">${pos}</option>`).join('')}`;
+    const posOpts=`<option value="">—</option>${POSITIONS.map(pos=>`<option value="${pos}">${pos}</option>`).join('')}<option value="BN">BN – Bench</option>`;
 
     if(!ordered.length){
       body=`<div class="surface" style="text-align:center;padding:24px;color:var(--muted);font-size:13px">
@@ -2266,6 +2276,22 @@ function showGameModal(isNew){
         +'<td style="width:8px"></td><td></td><td></td>';
 
       const anyConflict=Object.values(conflictMap).some(s=>s.size>0);
+
+      // Build "missing positions" footer row per inning
+      const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF'];
+      const missingRows=Array.from({length:numInnings},(_,inn)=>{
+        const inningData=EG.inningGrid[inn+1]||{};
+        const filled=new Set(Object.values(inningData).map(c=>(c.subPlayerId?c.subPosition:c.position)||'').filter(p=>p&&p!=='BN'));
+        const missing=FIELD_POS.filter(p=>!filled.has(p));
+        const allGood=missing.length===0;
+        return `<td style="padding:4px 2px;text-align:center;vertical-align:top;background:${allGood?'var(--green)0a':'var(--red)0a'}">
+          ${allGood
+            ? `<span style="color:var(--green);font-size:11px;font-weight:700">✓ Full</span>`
+            : missing.map(p=>`<span style="display:inline-block;background:var(--red)22;color:var(--red);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;margin:1px">${p}</span>`).join('')
+          }
+        </td>`;
+      }).join('') + '<td style="width:8px"></td><td></td><td></td>';
+
       body=`<div style="overflow-x:auto">
         ${anyConflict?'<div style="background:var(--red)18;border:1px solid var(--red)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:8px">⚠ Position conflicts detected — same position assigned to two players in the same inning</div>':''}
         <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Green = assigned &nbsp;|&nbsp; Red = conflict &nbsp;|&nbsp; "sub ▾" = substitute a player into that inning's spot</div>
@@ -2275,8 +2301,14 @@ function showGameModal(isNew){
             <tr style="background:var(--dim)">${copyBtns}</tr>
           </thead>
           <tbody>${gridRows}
-          ${outRow?`<tr><td colspan="${numInnings+4}" style="padding:8px;font-size:11px;color:var(--muted)">Not playing: ${outRow}</td></tr>`:''}
+          ${outRow?`<tr><td colspan="${numInnings+4}" style="padding:8px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)">Not playing: ${outRow}</td></tr>`:''}
           </tbody>
+          <tfoot>
+            <tr style="border-top:2px solid var(--border)">
+              <td style="padding:5px 8px;font-size:10px;font-weight:700;color:var(--muted);white-space:nowrap">Missing positions</td>
+              ${missingRows}
+            </tr>
+          </tfoot>
         </table>
       </div>`;
     }
@@ -2325,6 +2357,46 @@ function copyInning(fromInn){
   showGameModal(!DB.plans.find(p=>p.id===EG?.id));
 }
 function updGL(pid,f,v){if(EG){const e=EG.lineup.find(x=>x.playerId===pid);if(e)e[f]=v;}}
+
+// ── Batting order drag and drop ──────────────────────────
+let _boDrag=null;
+function onBODragStart(e,pid){
+  _boDrag=pid;
+  e.dataTransfer.effectAllowed='move';
+  setTimeout(()=>{const r=document.getElementById('bo-row-'+pid);if(r)r.style.opacity='.3';},0);
+}
+function onBODragEnd(e){
+  if(_boDrag){const r=document.getElementById('bo-row-'+_boDrag);if(r)r.style.opacity='';}
+  document.querySelectorAll('#bo-tbody tr').forEach(r=>r.style.background='');
+  _boDrag=null;
+}
+function onBODragOver(e,pid){
+  e.preventDefault();
+  if(pid===_boDrag)return;
+  document.querySelectorAll('#bo-tbody tr').forEach(r=>r.style.background='');
+  const r=document.getElementById('bo-row-'+pid);
+  if(r)r.style.background='var(--gold)18';
+}
+function onBODrop(e,targetPid){
+  e.preventDefault();
+  document.querySelectorAll('#bo-tbody tr').forEach(r=>r.style.background='');
+  if(!_boDrag||_boDrag===targetPid||!EG)return;
+  // Get ordered active players (no out-for-game)
+  const active=EG.lineup.filter(x=>!x.outForGame).sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
+  const fromIdx=active.findIndex(x=>x.playerId===_boDrag);
+  const toIdx=active.findIndex(x=>x.playerId===targetPid);
+  if(fromIdx<0||toIdx<0)return;
+  // Reorder
+  const moved=active.splice(fromIdx,1)[0];
+  active.splice(toIdx,0,moved);
+  // Reassign sequential batting spots
+  active.forEach((ent,i)=>{
+    const lineupEnt=EG.lineup.find(x=>x.playerId===ent.playerId);
+    if(lineupEnt)lineupEnt.battingSpot=i+1;
+  });
+  _boDrag=null;
+  showGameModal(false);
+}
 function tglGPos(pid,pos,btn){if(!EG)return;const e=EG.lineup.find(x=>x.playerId===pid);if(!e)return;e.positions=e.positions.includes(pos)?e.positions.filter(p=>p!==pos):[...e.positions,pos];btn.classList.toggle('on');}
 function saveGame(isNew){if(!EG)return;
   EG.opponent=document.getElementById('g-opp')?.value||EG.opponent;
