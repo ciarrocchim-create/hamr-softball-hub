@@ -2081,6 +2081,7 @@ function renderLineups(){
           </div>
           <div class="row" style="gap:6px">
             <button class="btn btn-dim btn-sm" onclick="editGame('${g.id}')">Edit</button>
+            <button class="btn btn-dim btn-sm" onclick="dupGame('${g.id}')" title="Duplicate this lineup">⧉</button>
             <button class="btn btn-red btn-sm" onclick="delGame('${g.id}')">✕</button>
           </div>
         </div>
@@ -2141,12 +2142,18 @@ function showGameModal(isNew){
           ondragend="onBODragEnd(event)"
           ondragover="onBODragOver(event,'${ent.playerId}')"
           ondrop="onBODrop(event,'${ent.playerId}')"
-          style="opacity:${isOut?'.45':'1'};background:${isOut?'var(--dim)':'transparent'};transition:.1s;cursor:${isOut?'default':'grab'}">
+          style="opacity:${isOut?'.45':'1'};background:${isOut?'var(--dim)':'transparent'};transition:.1s">
         <td style="padding:5px 6px;width:20px">
           ${isOut?'':`<span style="color:var(--muted);font-size:16px;cursor:grab;user-select:none" title="Drag to reorder">⠿</span>`}
         </td>
-        <td style="padding:5px 4px;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold);width:28px;text-align:center">
-          ${spot||'—'}
+        <td style="padding:3px 4px;width:52px">
+          <input type="number" min="1" max="30"
+            value="${spot||''}"
+            placeholder="—"
+            ${isOut?'disabled':''}
+            style="width:48px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold);background:transparent;border:1px solid var(--border);border-radius:6px;padding:2px 4px"
+            onchange="setBattingSpot('${ent.playerId}',this.value)"
+          />
         </td>
         <td style="padding:5px 8px;font-weight:600;white-space:nowrap;font-size:12px">
           #${esc(p.number||'—')} ${esc(p.name.split(' ')[0])} ${esc(p.name.split(' ').slice(1).join(' '))}
@@ -2165,7 +2172,11 @@ function showGameModal(isNew){
     const activeRows=active.map((e,i)=>makeRow(e,i)).join('');
     const benchRows=bench.map((e,i)=>makeRow(e,i)).join('');
 
-    body=`<div style="font-size:11px;color:var(--muted);margin-bottom:8px">⠿ Drag players to set batting order. Numbers update automatically.</div>
+    body=`<div class="row" style="margin-bottom:10px;gap:8px;flex-wrap:wrap">
+      <div style="font-size:11px;color:var(--muted)">⠿ Drag to reorder. Numbers update automatically.</div>
+      <div class="f1"></div>
+      <button class="btn btn-dim btn-sm" onclick="fixRenumber()">🔧 Fix &amp; Renumber</button>
+    </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
       <thead><tr><th style="width:20px"></th><th style="width:28px">Bat #</th><th>Player</th><th>Inn.</th><th>Positions</th><th>Status</th></tr></thead>
       <tbody id="bo-tbody">${activeRows}
@@ -2416,9 +2427,75 @@ function copyInning(fromInn){
   showGameModal(!DB.plans.find(p=>p.id===EG?.id));
 }
 function updGL(pid,f,v){if(EG){const e=EG.lineup.find(x=>x.playerId===pid);if(e)e[f]=v;}}
+function setBattingSpot(pid,val){
+  if(!EG)return;
+  const spot=parseInt(val)||0;
+  const e=EG.lineup.find(x=>x.playerId===pid);
+  if(!e)return;
+  // Save old spot for inningGrid remap
+  const oldSpot=e.battingSpot;
+  const oldSpotToPid={};
+  EG.lineup.forEach(x=>{if(x.battingSpot>0)oldSpotToPid[x.battingSpot]=x.playerId;});
+  e.battingSpot=spot;
+  // Remap inningGrid: move this player's assignments from old slot to new slot
+  if(oldSpot&&spot&&oldSpot!==spot&&EG.inningGrid){
+    Object.values(EG.inningGrid).forEach(inningData=>{
+      if(inningData[oldSpot]&&inningData[oldSpot].playerId===pid){
+        inningData[spot]=inningData[oldSpot];
+        delete inningData[oldSpot];
+      }
+    });
+  }
+}
 
 // ── Batting order drag and drop ──────────────────────────
 let _boDrag=null;
+
+function fixRenumber(){
+  if(!EG)return;
+  // Save old spot→playerId map before renumbering
+  const oldSpotToPid={};
+  EG.lineup.forEach(e=>{if(e.battingSpot>0)oldSpotToPid[e.battingSpot]=e.playerId;});
+  // Sort all non-out players by current spot and renumber sequentially
+  const active=EG.lineup.filter(x=>!x.outForGame).sort((a,b)=>(a.battingSpot||999)-(b.battingSpot||999));
+  active.forEach((ent,i)=>{
+    const le=EG.lineup.find(x=>x.playerId===ent.playerId);
+    if(le)le.battingSpot=i+1;
+  });
+  // Build new pid→spot map
+  const newPidToSpot={};
+  EG.lineup.forEach(e=>{if(e.battingSpot>0)newPidToSpot[e.playerId]=e.battingSpot;});
+  // Remap inningGrid keys so assignments follow the player to their new spot
+  if(EG.inningGrid){
+    const newGrid={};
+    Object.entries(EG.inningGrid).forEach(([inn,spots])=>{
+      newGrid[inn]={};
+      Object.entries(spots).forEach(([oldSpot,cell])=>{
+        const pid=oldSpotToPid[oldSpot];
+        const newSpot=pid?newPidToSpot[pid]:null;
+        if(newSpot)newGrid[inn][newSpot]={...cell};
+      });
+    });
+    EG.inningGrid=newGrid;
+  }
+  // Flash feedback
+  const btn=document.querySelector('[onclick="fixRenumber()"]');
+  if(btn){btn.textContent='✓ Fixed!';btn.style.background='var(--green)';btn.style.color='#000';
+    setTimeout(()=>{btn.textContent='🔧 Fix & Renumber';btn.style.background='';btn.style.color='';},1500);}
+  showGameModal(false);
+}
+
+function dupGame(id){
+  const src=DB.games.find(g=>g.id===id);if(!src)return;
+  const copy=JSON.parse(JSON.stringify(src));
+  copy.id=uid();
+  copy.date=new Date().toISOString().slice(0,10);
+  copy.opponent=(copy.opponent||'TBD')+' (copy)';
+  // Reset innings played — lineup and positions carry over
+  (copy.lineup||[]).forEach(e=>e.inningsPlayed=0);
+  DB.games.push(copy);
+  scheduleSave();renderTab();updateCounts();
+}
 function onBODragStart(e,pid){
   _boDrag=pid;
   e.dataTransfer.effectAllowed='move';
