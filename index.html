@@ -2310,7 +2310,10 @@ function showGameModal(isNew){
 
         const spotBadge=ent.battingSpot?`<span style="color:var(--gold);font-weight:800;font-size:13px;min-width:18px;display:inline-block">${ent.battingSpot}.</span>`:`<span style="color:var(--dim);font-size:11px">—</span>`;
         return `<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:6px 8px;white-space:nowrap;font-size:12px;font-weight:600;min-width:110px">${spotBadge} ${esc(p.name.split(' ')[0])} <span style="color:var(--muted);font-size:10px">#${esc(p.number||'')}</span></td>
+          <td style="padding:6px 8px;white-space:nowrap;font-size:12px;font-weight:600;min-width:110px">
+            ${spotBadge} ${esc(p.name.split(' ')[0])} <span style="color:var(--muted);font-size:10px">#${esc(p.number||'')}</span>
+            ${totalBenchInnings>0?`<span style="display:inline-block;margin-left:4px;font-size:10px;font-weight:800;padding:1px 6px;border-radius:10px;background:${totalBenchInnings>2?'var(--red)33':totalBenchInnings>0?'var(--gold)22':'var(--dim)'};color:${totalBenchInnings>2?'var(--red)':totalBenchInnings>0?'var(--gold)':'var(--muted)'}">BN:${totalBenchInnings}</span>`:''}
+          </td>
           ${regularCells}${altCells}
         </tr>`;
       }).join('');
