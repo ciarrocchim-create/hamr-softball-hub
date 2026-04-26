@@ -345,7 +345,14 @@ const METRIC_TYPES = [
 </script>
 <script>
 // ═══ CONSTANTS ═══════════════════════════════════════════
-const BUILD_TIME='April 25, 2026 at 07:06 PM UTC';
+// BUILD_TIME reads from file's last modified date — updates automatically on each GitHub deploy
+const BUILD_TIME=(()=>{
+  try{
+    const d=new Date(document.lastModified);
+    if(isNaN(d.getTime()))return'Unknown';
+    return d.toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+  }catch(e){return'Unknown';}
+})();
 const POSITIONS=['P','C','1B','2B','3B','SS','LF','CF','RF','DP','FLEX','EH'];
 const DRILL_CATS=['Hitting','Pitching','Fielding','Catching','Baserunning','Conditioning','Other'];
 const DRILL_TYPES=['Drill','Tip','Warmup','Progression'];
@@ -2749,8 +2756,16 @@ function printLineupCard(){
         missing.map(p=>`<span style="background:#ffdddd;color:#cc3333;border-radius:3px;padding:1px 4px;margin:1px;display:inline-block;font-weight:700">${p}</span>`).join('')}
     </td>`;
   }).join('') + '<td style="width:6px;background:#eee;border:none"></td>'
-    + '<td style="padding:4px;text-align:center;border:1px solid #c8e6c8;background:#f0fff0;font-size:10px;font-weight:700;color:#555">Win Big</td>'
-    + '<td style="padding:4px;text-align:center;border:1px solid #e6b8b8;background:#fff0f0;font-size:10px;font-weight:700;color:#555">Down Big</td>';
+    + (()=>{
+        const winFilled=new Set(Object.values(EG.altGrid?.winning||{}).map(c=>c.position||'').filter(p=>p&&p!=='BN'));
+        const winMissing=FIELD_POS.filter(p=>!winFilled.has(p));
+        return `<td style="padding:4px;text-align:center;border:1px solid #c8e6c8;background:#f0fff0;font-size:10px">${winMissing.length===0?'<span style="color:#1a6b2e;font-weight:700">✓ Full</span>':winMissing.map(p=>`<span style="background:#ffdddd;color:#cc3333;border-radius:3px;padding:1px 4px;margin:1px;display:inline-block;font-weight:700">${p}</span>`).join('')}</td>`;
+      })()
+    + (()=>{
+        const loseFilled=new Set(Object.values(EG.altGrid?.losing||{}).map(c=>c.position||'').filter(p=>p&&p!=='BN'));
+        const loseMissing=FIELD_POS.filter(p=>!loseFilled.has(p));
+        return `<td style="padding:4px;text-align:center;border:1px solid #e6b8b8;background:#fff0f0;font-size:10px">${loseMissing.length===0?'<span style="color:#1a6b2e;font-weight:700">✓ Full</span>':loseMissing.map(p=>`<span style="background:#ffdddd;color:#cc3333;border-radius:3px;padding:1px 4px;margin:1px;display:inline-block;font-weight:700">${p}</span>`).join('')}</td>`;
+      })();
 
   // Alt lineups summary (now embedded in main table, separate table below is removed)
   const winRow=active.map(ent=>{
