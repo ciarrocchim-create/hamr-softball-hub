@@ -2897,66 +2897,83 @@ function saveGame(isNew){if(!EG)return;
 }
 function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();renderTab();updateCounts();}
 function showPT(){
-  // All positions to track in order
   const ALL_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX','DP','EH'];
   const rep=DB.players.map(p=>{
     const totI=DB.games.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(parseInt(e?.inningsPlayed)||0);},0);
     const gP=DB.games.filter(g=>(parseInt(g.lineup?.find(l=>l.playerId===p.id)?.inningsPlayed)||0)>0).length;
-    const pc={};const bs=[];
+    const pc={};const bs=[];let totBench=0;
     DB.games.forEach(g=>{
       const e=g.lineup?.find(l=>l.playerId===p.id);
-      if(e){
+      if(e&&(parseInt(e.inningsPlayed)||0)>0){
         if(e.battingSpot>0)bs.push(e.battingSpot);
+        // Count innings played at each position and bench innings
         Object.values(g.inningGrid||{}).forEach(inn=>{
           const cell=inn[p.id]||{};
           const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
-          if(pos&&pos!=='BN')pc[pos]=(pc[pos]||0)+1;
+          if(pos==='BN')totBench++;
+          else if(pos)pc[pos]=(pc[pos]||0)+1;
         });
       }
     });
-    return{p,totI,gP,pc,avgB:bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1):'—'};
+    const innPerGame=gP>0?(totI/gP).toFixed(1):'—';
+    const benchPerGame=gP>0?(totBench/gP).toFixed(1):'—';
+    return{p,totI,totBench,gP,pc,avgB:bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1):'—',innPerGame,benchPerGame};
   }).sort((a,b)=>b.totI-a.totI);
   const maxI=DB.games.reduce((s,g)=>s+(g.innings||6),0);
-  // Only show positions that at least one player has played
   const usedPos=ALL_POS.filter(pos=>rep.some(r=>r.pc[pos]>0));
-  const posHeaders=usedPos.map(pos=>`<th style="text-align:center;padding:6px 6px;font-size:10px;color:var(--muted)">${pos}</th>`).join('');
   const maxForPos={};
   usedPos.forEach(pos=>{maxForPos[pos]=Math.max(...rep.map(r=>r.pc[pos]||0),1);});
+  const posHeaders=usedPos.map(pos=>`<th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">${pos}</th>`).join('');
+
   const rows=rep.map(r=>{
     const pct=maxI>0?Math.round((r.totI/maxI)*100):0;
     const col=pct<50?'var(--red)':pct<75?'var(--gold)':'var(--green)';
+    const benchCol=r.totBench===0?'var(--green)':r.benchPerGame>2?'var(--red)':r.benchPerGame>1?'var(--gold)':'var(--muted)';
     const posCells=usedPos.map(pos=>{
       const count=r.pc[pos]||0;
       const pctBar=Math.round((count/maxForPos[pos])*100);
-      return `<td style="text-align:center;padding:6px 4px">
+      return `<td style="text-align:center;padding:5px 3px">
         ${count>0?`<div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:var(--gold)">${count}</div>
-        <div style="background:var(--surface);border-radius:2px;height:4px;width:36px;margin:2px auto">
+        <div style="background:var(--surface);border-radius:2px;height:4px;width:32px;margin:2px auto">
           <div style="background:var(--gold);height:100%;border-radius:2px;width:${pctBar}%"></div>
         </div>`:'<span style="color:var(--dim);font-size:11px">—</span>'}
       </td>`;
     }).join('');
     return `<tr style="border-bottom:1px solid var(--border)">
-      <td style="padding:8px 10px;font-weight:700;white-space:nowrap">#${esc(r.p.number||'—')} ${esc(r.p.name)}</td>
-      <td style="padding:8px 8px;text-align:center;color:var(--muted)">${r.gP}</td>
-      <td style="padding:8px 8px;text-align:center">
+      <td style="padding:7px 10px;font-weight:700;white-space:nowrap">#${esc(r.p.number||'—')} ${esc(r.p.name)}</td>
+      <td style="text-align:center;padding:7px 6px;color:var(--muted)">${r.gP}</td>
+      <td style="text-align:center;padding:7px 6px">
         <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:${col}">${r.totI}</span>
-        <div style="background:var(--surface);border-radius:3px;height:5px;width:50px;display:inline-block;vertical-align:middle;margin-left:6px">
+        <div style="background:var(--surface);border-radius:3px;height:4px;width:44px;display:inline-block;vertical-align:middle;margin-left:5px">
           <div style="background:${col};height:100%;border-radius:3px;width:${Math.min(pct,100)}%"></div>
         </div>
-        <span style="font-size:10px;color:var(--muted);margin-left:4px">${pct}%</span>
+        <span style="font-size:10px;color:var(--muted);margin-left:3px">${pct}%</span>
       </td>
-      <td style="padding:8px 8px;text-align:center;color:var(--muted)">${r.avgB}</td>
+      <td style="text-align:center;padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:var(--blue)">${r.innPerGame}</td>
+      <td style="text-align:center;padding:7px 6px">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:${benchCol}">${r.totBench}</span>
+        <span style="font-size:10px;color:var(--muted);margin-left:4px">(${r.benchPerGame}/gm)</span>
+      </td>
+      <td style="text-align:center;padding:7px 6px;color:var(--muted);font-size:13px">${r.avgB}</td>
       ${posCells}
     </tr>`;
   }).join('');
+
   showModal(`${mhdr('📊 Playing Time Report')}
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Innings played per position across all games. Bar shows relative share vs. player who played it most.</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Per-game averages exclude games where player was out. Bench innings shown in 
+      <span style="color:var(--green)">green</span> / 
+      <span style="color:var(--gold)">yellow</span> / 
+      <span style="color:var(--red)">red</span> (0 / 1–2 / 3+).
+    </div>
     <div style="overflow-x:auto"><table>
       <thead><tr>
         <th style="text-align:left;padding:6px 10px">Player</th>
-        <th style="text-align:center;padding:6px 8px;font-size:10px;color:var(--muted)">Games</th>
-        <th style="text-align:center;padding:6px 8px;font-size:10px;color:var(--muted)">Total Inn.</th>
-        <th style="text-align:center;padding:6px 8px;font-size:10px;color:var(--muted)">Avg Bat</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Games</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Total Inn.</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--blue)">Inn/Game</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Bench Inn.</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Avg Bat</th>
         ${posHeaders}
       </tr></thead>
       <tbody>${rows}</tbody>
