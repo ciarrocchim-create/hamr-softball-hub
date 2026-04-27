@@ -1510,14 +1510,24 @@ function dlPlan(id){
           : `<div style="color:#aaa;font-size:11px">${esc(st.customName||'No drill')}</div>`;
         return `<tr style="background:#f5f8ff;border-bottom:1px solid #e8eeff;vertical-align:top">
           <td style="padding:6px 12px 6px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5;white-space:nowrap">${esc(st.stationLabel||'Station '+(si+1))}</td>
-          <td style="padding:6px 12px">${drillCell}</td>
+          <td style="padding:6px 12px">
+            ${drillCell}
+            ${st.notes?`<div style="font-size:10px;color:#777;margin-top:3px;font-style:italic">${esc(st.notes)}</div>`:''}
+          </td>
           <td style="padding:6px 12px;font-size:11px;text-align:right;white-space:nowrap">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td>
         </tr>`;
       }).join('');
       return `<tr style="background:#ddeaff"><td style="padding:7px 12px;font-size:11px;font-weight:800;color:#5b8af5">${esc(ts[item.blockId]||'')}</td><td colspan="2" style="font-size:12px;font-weight:800;color:#5b8af5">⊞ STATIONS — ${sts.length} groups simultaneously</td></tr>${subrows}<tr><td colspan="3" style="padding:2px 0;background:#f0f4ff;border-bottom:2px solid #5b8af5"></td></tr>`;
     } else {
       qti++;const d=item.drillId?getDrill(item.drillId):null;const name=d?d.name:(item.customName||'Custom');
-      return `<tr style="border-bottom:1px solid #e8e8e8"><td style="padding:7px 12px;font-size:11px;color:#888;font-weight:700;width:130px">${esc(ts[item.id]||'')}</td><td style="padding:7px 12px;font-size:12px;font-weight:700">${qti}. ${esc(name)}${d?` <span style="font-size:10px;font-weight:400;color:#888">[${d.category}]</span>`:''}</td><td style="padding:7px 12px;font-size:11px;text-align:right">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td></tr>`;
+      return `<tr style="border-bottom:1px solid #e8e8e8;vertical-align:top">
+        <td style="padding:7px 12px;font-size:11px;color:#888;font-weight:700;width:130px;white-space:nowrap">${esc(ts[item.id]||'')}</td>
+        <td style="padding:7px 12px">
+          <div style="font-size:12px;font-weight:700">${qti}. ${esc(name)}${d?` <span style="font-size:10px;font-weight:400;color:#888">[${d.category}]</span>`:''}</div>
+          ${item.notes?`<div style="font-size:10px;color:#777;margin-top:3px;font-style:italic">${esc(item.notes)}</div>`:''}
+        </td>
+        <td style="padding:7px 12px;font-size:11px;text-align:right;white-space:nowrap">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td>
+      </tr>`;
     }
   }).join('');
   // Full rows
