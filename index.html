@@ -2183,40 +2183,36 @@ function showFieldView(inning){
 
 function migrateInningGrid(){
   if(!EG||!EG.inningGrid)return;
-  // Old format: {inn:{spot:{playerId,position,...}}}
-  // New format: {inn:{playerId:{position,...}}}
-  // Detect old format by checking if any cell value has a `playerId` property
   const validPids=new Set((EG.lineup||[]).map(e=>e.playerId));
   const newGrid={};
-  let migrated=false;
+  // Two-pass: first collect new-format entries, then layer in old-format (without overwriting)
   Object.entries(EG.inningGrid).forEach(([inn,cells])=>{
-    newGrid[inn]={};
+    newGrid[inn]=newGrid[inn]||{};
+    // Pass 1: new-format entries (key IS a valid pid, no playerId property in cell)
     Object.entries(cells).forEach(([key,cell])=>{
-      if(cell&&typeof cell==='object'&&cell.playerId&&validPids.has(cell.playerId)){
-        // Old format: key is batting spot, value has playerId
-        // Migrate to new format: key is playerId
-        const pid=cell.playerId;
-        const {playerId:_,...rest}=cell;
-        if(!newGrid[inn][pid])newGrid[inn][pid]=rest; // don't overwrite if new entry exists
-        migrated=true;
-      } else if(cell&&typeof cell==='object'&&!cell.playerId){
-        // New format: key is playerId, keep as-is
+      if(cell&&typeof cell==='object'&&!cell.playerId&&validPids.has(key)){
         newGrid[inn][key]=cell;
       }
     });
+    // Pass 2: old-format entries (cell has playerId property) — only migrate if no new entry exists
+    Object.entries(cells).forEach(([key,cell])=>{
+      if(cell&&typeof cell==='object'&&cell.playerId&&validPids.has(cell.playerId)){
+        const pid=cell.playerId;
+        if(!newGrid[inn][pid]){
+          const {playerId:_,...rest}=cell;
+          newGrid[inn][pid]=rest;
+        }
+      }
+    });
   });
-  if(migrated){
-    EG.inningGrid=newGrid;
-    console.log('Migrated inningGrid from spot-keys to pid-keys');
-  }
-  // Also migrate altGrid if needed
-  ['winning','losing'].forEach(scenario=>{
+  EG.inningGrid=newGrid;
+  // Migrate altGrid too
+  ['winning'].forEach(scenario=>{
     if(!EG.altGrid?.[scenario])return;
     const newAlt={};
     Object.entries(EG.altGrid[scenario]).forEach(([key,cell])=>{
       if(cell&&cell.playerId&&validPids.has(cell.playerId)){
-        newAlt[cell.playerId]={position:cell.position||''};
-        migrated=true;
+        if(!newAlt[cell.playerId])newAlt[cell.playerId]={position:cell.position||''};
       } else if(validPids.has(key)){
         newAlt[key]=cell;
       }
@@ -2276,6 +2272,7 @@ function editGame(id){
 
 function showGameModal(isNew){
   if(!EG)return;
+  migrateInningGrid(); // ensure clean pid-keyed format on every render
   const tabBtns=`<div class="row" style="gap:6px;margin-bottom:16px">
     <button class="tog${_gTab==='lineup'?' on':''}" onclick="_gTab='lineup';showGameModal(${isNew})">📋 Batting Order & Tracking</button>
     <button class="tog${_gTab==='grid'?' on':''}" onclick="_gTab='grid';showGameModal(${isNew})">📊 Inning-by-Inning Planner</button>
@@ -2557,15 +2554,12 @@ function updGrid(inning,spot,pid,pos){
   if(!EG.inningGrid[inning])EG.inningGrid[inning]={};
   const existing=EG.inningGrid[inning][pid]||{};
   EG.inningGrid[inning][pid]={...existing,position:pos};
-  const played=new Set();
-  Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{
-    if(c.position&&c.position!=='BN')played.add(c.pid||Object.keys(EG.inningGrid[inning]||{}).find(k=>EG.inningGrid[inning][k]===c)||pid);
-  }));
-  // simpler: just mark the player as played if they have a non-BN position
-  const pid2=pid;
-  const hasPlayed=Object.values(EG.inningGrid).some(inn=>inn[pid2]&&inn[pid2].position&&inn[pid2].position!=='BN');
-  const le=EG.lineup.find(e=>e.playerId===pid2);
+  // Mark playing time
+  const hasPlayed=Object.values(EG.inningGrid).some(inn=>inn[pid]&&inn[pid].position&&inn[pid].position!=='BN');
+  const le=EG.lineup.find(e=>e.playerId===pid);
   if(le&&hasPlayed&&!le.inningsPlayed)le.inningsPlayed=1;
+  // Re-render grid to update streaks, conflicts, missing positions, and field diagrams
+  _gTab='grid';showGameModal(false);
 }
 function updGridSub(inning,origPid,subPid){
   if(!EG)return;
@@ -2575,10 +2569,12 @@ function updGridSub(inning,origPid,subPid){
   if(!subPid){delete existing.subPlayerId;delete existing.subPosition;}
   else{existing.subPlayerId=subPid;existing.subPosition=existing.subPosition||'';}
   EG.inningGrid[inning][origPid]=existing;
+  _gTab='grid';showGameModal(false);
 }
 function updGridSubPos(inning,origPid,pos){
   if(!EG||!EG.inningGrid?.[inning]?.[origPid])return;
   EG.inningGrid[inning][origPid].subPosition=pos;
+  _gTab='grid';showGameModal(false);
 }
 function updAltGrid(scenario,pid,pos){
   if(!EG)return;
