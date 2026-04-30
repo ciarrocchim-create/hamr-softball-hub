@@ -2086,9 +2086,11 @@ function showFieldView(inning){
   if(!EG)return;
   const inningData=EG.inningGrid[inning]||{};
 
-  // Build position→player map for this inning
+  // Build position→player map for this inning (skip out-for-game players)
+  const activePlayerPids=new Set((EG.lineup||[]).filter(e=>!e.outForGame).map(e=>e.playerId));
   const posMap={};
   Object.entries(inningData).forEach(([pid,cell])=>{
+    if(!activePlayerPids.has(pid))return; // only valid active player IDs
     const effPid=cell.subPlayerId||pid;
     const effPos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
     if(effPos&&effPos!=='BN'){
@@ -2366,15 +2368,23 @@ function showGameModal(isNew){
         ;
 
       // Build conflict map: per inning, which positions are used more than once
+      // Only count entries whose key IS a valid active player ID
+      // This filters out both out-for-game players AND stale old-format entries (batting spot keys)
+      const activePids=new Set(EG.lineup.filter(e=>!e.outForGame).map(e=>e.playerId));
+      const outPids=new Set(EG.lineup.filter(e=>e.outForGame).map(e=>e.playerId));
+
       const conflictMap={}; // {inn: Set of conflicted positions}
       for(let inn=1;inn<=numInnings;inn++){
         const inningData=EG.inningGrid[inn]||{};
         const posCounts={};
-        Object.values(inningData).forEach(cell=>{
+        Object.entries(inningData).forEach(([pid,cell])=>{
+          if(!activePids.has(pid))return; // only count valid active player IDs
           const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
           if(pos&&pos!=='BN')posCounts[pos]=(posCounts[pos]||0)+1;
         });
-        conflictMap[inn]=new Set(Object.entries(posCounts).filter(([,c])=>c>1).map(([p])=>p));
+        const conflicts=new Set(Object.entries(posCounts).filter(([,c])=>c>1).map(([p])=>p));
+        if(conflicts.size>0)console.log(`Inn ${inn} conflicts:`,{conflicts:[...conflicts],posCounts,inningData:JSON.parse(JSON.stringify(EG.inningGrid[inn]||{}))});
+        conflictMap[inn]=conflicts;
       }
       // Available subs (players not in batting order or marked out)
       const subPlayers=EG.lineup.filter(e=>!e.outForGame).map(e=>getPlayer(e.playerId)).filter(Boolean);
@@ -2494,8 +2504,9 @@ function showGameModal(isNew){
       const FIELD_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX'];
       const missingRows=Array.from({length:numInnings},(_,inn)=>{
         const inningData=EG.inningGrid[inn+1]||{};
-        // pid-keyed: each value is {position, subPlayerId?, subPosition?}
-        const filled=new Set(Object.values(inningData).map(c=>(c.subPlayerId?c.subPosition:c.position)||'').filter(p=>p&&p!=='BN'));
+        const filled=new Set(Object.entries(inningData)
+          .filter(([pid])=>activePids.has(pid))
+          .map(([,c])=>(c.subPlayerId?c.subPosition:c.position)||'').filter(p=>p&&p!=='BN'));
         const missing=FIELD_POS.filter(p=>!filled.has(p));
         const allGood=missing.length===0;
         return `<td style="padding:4px 2px;text-align:center;vertical-align:top;background:${allGood?'var(--green)0a':'var(--red)0a'}">
@@ -2833,7 +2844,9 @@ ${(()=>{
     const inn=i+1;
     const inningData=EG.inningGrid[inn]||{};
     const posMap={};
+    const activePidsP=new Set((EG.lineup||[]).filter(e=>!e.outForGame).map(e=>e.playerId));
     Object.entries(inningData).forEach(([pid,cell])=>{
+      if(!activePidsP.has(pid))return; // only valid active player IDs
       const effPid=cell.subPlayerId||pid;
       const effPos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
       if(effPos&&effPos!=='BN'){const p=getPlayer(effPid);if(p)posMap[effPos]=p;}
