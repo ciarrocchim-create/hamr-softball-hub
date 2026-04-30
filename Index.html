@@ -345,7 +345,14 @@ const METRIC_TYPES = [
 </script>
 <script>
 // ═══ CONSTANTS ═══════════════════════════════════════════
-const BUILD_TIME='April 25, 2026 at 07:06 PM UTC';
+// BUILD_TIME reads from file's last modified date — updates automatically on each GitHub deploy
+const BUILD_TIME=(()=>{
+  try{
+    const d=new Date(document.lastModified);
+    if(isNaN(d.getTime()))return'Unknown';
+    return d.toLocaleString('en-US',{month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
+  }catch(e){return'Unknown';}
+})();
 const POSITIONS=['P','C','1B','2B','3B','SS','LF','CF','RF','DP','FLEX','EH'];
 const DRILL_CATS=['Hitting','Pitching','Fielding','Catching','Baserunning','Conditioning','Other'];
 const DRILL_TYPES=['Drill','Tip','Warmup','Progression'];
@@ -1503,14 +1510,24 @@ function dlPlan(id){
           : `<div style="color:#aaa;font-size:11px">${esc(st.customName||'No drill')}</div>`;
         return `<tr style="background:#f5f8ff;border-bottom:1px solid #e8eeff;vertical-align:top">
           <td style="padding:6px 12px 6px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5;white-space:nowrap">${esc(st.stationLabel||'Station '+(si+1))}</td>
-          <td style="padding:6px 12px">${drillCell}</td>
+          <td style="padding:6px 12px">
+            ${drillCell}
+            ${st.notes?`<div style="font-size:10px;color:#777;margin-top:3px;font-style:italic">${esc(st.notes)}</div>`:''}
+          </td>
           <td style="padding:6px 12px;font-size:11px;text-align:right;white-space:nowrap">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td>
         </tr>`;
       }).join('');
       return `<tr style="background:#ddeaff"><td style="padding:7px 12px;font-size:11px;font-weight:800;color:#5b8af5">${esc(ts[item.blockId]||'')}</td><td colspan="2" style="font-size:12px;font-weight:800;color:#5b8af5">⊞ STATIONS — ${sts.length} groups simultaneously</td></tr>${subrows}<tr><td colspan="3" style="padding:2px 0;background:#f0f4ff;border-bottom:2px solid #5b8af5"></td></tr>`;
     } else {
       qti++;const d=item.drillId?getDrill(item.drillId):null;const name=d?d.name:(item.customName||'Custom');
-      return `<tr style="border-bottom:1px solid #e8e8e8"><td style="padding:7px 12px;font-size:11px;color:#888;font-weight:700;width:130px">${esc(ts[item.id]||'')}</td><td style="padding:7px 12px;font-size:12px;font-weight:700">${qti}. ${esc(name)}${d?` <span style="font-size:10px;font-weight:400;color:#888">[${d.category}]</span>`:''}</td><td style="padding:7px 12px;font-size:11px;text-align:right">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td></tr>`;
+      return `<tr style="border-bottom:1px solid #e8e8e8;vertical-align:top">
+        <td style="padding:7px 12px;font-size:11px;color:#888;font-weight:700;width:130px;white-space:nowrap">${esc(ts[item.id]||'')}</td>
+        <td style="padding:7px 12px">
+          <div style="font-size:12px;font-weight:700">${qti}. ${esc(name)}${d?` <span style="font-size:10px;font-weight:400;color:#888">[${d.category}]</span>`:''}</div>
+          ${item.notes?`<div style="font-size:10px;color:#777;margin-top:3px;font-style:italic">${esc(item.notes)}</div>`:''}
+        </td>
+        <td style="padding:7px 12px;font-size:11px;text-align:right;white-space:nowrap">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td>
+      </tr>`;
     }
   }).join('');
   // Full rows
@@ -2166,40 +2183,36 @@ function showFieldView(inning){
 
 function migrateInningGrid(){
   if(!EG||!EG.inningGrid)return;
-  // Old format: {inn:{spot:{playerId,position,...}}}
-  // New format: {inn:{playerId:{position,...}}}
-  // Detect old format by checking if any cell value has a `playerId` property
   const validPids=new Set((EG.lineup||[]).map(e=>e.playerId));
   const newGrid={};
-  let migrated=false;
+  // Two-pass: first collect new-format entries, then layer in old-format (without overwriting)
   Object.entries(EG.inningGrid).forEach(([inn,cells])=>{
-    newGrid[inn]={};
+    newGrid[inn]=newGrid[inn]||{};
+    // Pass 1: new-format entries (key IS a valid pid, no playerId property in cell)
     Object.entries(cells).forEach(([key,cell])=>{
-      if(cell&&typeof cell==='object'&&cell.playerId&&validPids.has(cell.playerId)){
-        // Old format: key is batting spot, value has playerId
-        // Migrate to new format: key is playerId
-        const pid=cell.playerId;
-        const {playerId:_,...rest}=cell;
-        if(!newGrid[inn][pid])newGrid[inn][pid]=rest; // don't overwrite if new entry exists
-        migrated=true;
-      } else if(cell&&typeof cell==='object'&&!cell.playerId){
-        // New format: key is playerId, keep as-is
+      if(cell&&typeof cell==='object'&&!cell.playerId&&validPids.has(key)){
         newGrid[inn][key]=cell;
       }
     });
+    // Pass 2: old-format entries (cell has playerId property) — only migrate if no new entry exists
+    Object.entries(cells).forEach(([key,cell])=>{
+      if(cell&&typeof cell==='object'&&cell.playerId&&validPids.has(cell.playerId)){
+        const pid=cell.playerId;
+        if(!newGrid[inn][pid]){
+          const {playerId:_,...rest}=cell;
+          newGrid[inn][pid]=rest;
+        }
+      }
+    });
   });
-  if(migrated){
-    EG.inningGrid=newGrid;
-    console.log('Migrated inningGrid from spot-keys to pid-keys');
-  }
-  // Also migrate altGrid if needed
-  ['winning','losing'].forEach(scenario=>{
+  EG.inningGrid=newGrid;
+  // Migrate altGrid too
+  ['winning'].forEach(scenario=>{
     if(!EG.altGrid?.[scenario])return;
     const newAlt={};
     Object.entries(EG.altGrid[scenario]).forEach(([key,cell])=>{
       if(cell&&cell.playerId&&validPids.has(cell.playerId)){
-        newAlt[cell.playerId]={position:cell.position||''};
-        migrated=true;
+        if(!newAlt[cell.playerId])newAlt[cell.playerId]={position:cell.position||''};
       } else if(validPids.has(key)){
         newAlt[key]=cell;
       }
@@ -2213,7 +2226,7 @@ function renderLineups(){
     sorted.map(g=>{
       const active=(g.lineup||[]).filter(e=>parseInt(e.inningsPlayed)>0);
       const s=[...active].sort((a,b)=>(a.battingSpot||99)-(b.battingSpot||99));
-      const chips=s.map(e=>{const p=getPlayer(e.playerId);return p?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;display:flex;gap:4px;align-items:center"><span style="color:var(--gold);font-weight:800">${e.battingSpot||'—'}.</span><span style="font-weight:600">${esc(p.name.split(' ')[0])}</span>${e.positions?.length?`<span style="color:var(--muted)">[${e.positions.join(',')}]</span>`:''}<span style="color:var(--muted)">(${e.inningsPlayed})</span></div>`:''}).join('');
+      const chips=s.map(e=>{const p=getPlayer(e.playerId);return p?`<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;display:flex;gap:4px;align-items:center"><span style="color:var(--gold);font-weight:800">${e.battingSpot||'—'}.</span><span style="font-weight:600">${esc(p.name.split(' ')[0])}</span><span style="color:var(--muted)">(${e.inningsPlayed})</span></div>`:''}).join('');
       return `<div class="card" style="margin-bottom:10px">
         <div class="row" style="margin-bottom:8px">
           <div class="f1"><div style="font-weight:700;font-size:15px">vs ${esc(g.opponent||'TBD')}</div>
@@ -2259,6 +2272,7 @@ function editGame(id){
 
 function showGameModal(isNew){
   if(!EG)return;
+  migrateInningGrid(); // ensure clean pid-keyed format on every render
   const tabBtns=`<div class="row" style="gap:6px;margin-bottom:16px">
     <button class="tog${_gTab==='lineup'?' on':''}" onclick="_gTab='lineup';showGameModal(${isNew})">📋 Batting Order & Tracking</button>
     <button class="tog${_gTab==='grid'?' on':''}" onclick="_gTab='grid';showGameModal(${isNew})">📊 Inning-by-Inning Planner</button>
@@ -2281,7 +2295,7 @@ function showGameModal(isNew){
       const p=getPlayer(ent.playerId);if(!p)return'';
       const isOut=ent.outForGame||false;
       const spot=ent.battingSpot||0;
-      const pbtn=POSITIONS.map(pos=>`<button type="button" class="tog btn-xs${(ent.positions||[]).includes(pos)?' on':''}" ${isOut?'disabled':''} onclick="tglGPos('${ent.playerId}','${pos}',this)">${pos}</button>`).join('');
+
       return `<tr id="bo-row-${ent.playerId}"
           draggable="${isOut?'false':'true'}"
           ondragstart="onBODragStart(event,'${ent.playerId}')"
@@ -2306,7 +2320,6 @@ function showGameModal(isNew){
           ${isOut?'<span class="badge" style="background:var(--red)22;color:var(--red);font-size:9px;margin-left:4px">OUT</span>':''}
         </td>
         <td style="padding:5px 8px"><input type="number" value="${ent.inningsPlayed||''}" placeholder="0" style="width:50px;text-align:center;font-size:12px" min="0" ${isOut?'disabled':''} onchange="updGL('${ent.playerId}','inningsPlayed',parseInt(this.value)||0)"/></td>
-        <td style="padding:5px 8px"><div class="row" style="gap:3px;flex-wrap:wrap">${pbtn}</div></td>
         <td style="padding:5px 8px">
           <button class="btn btn-xs ${isOut?'btn-gold':'btn-dim'}" onclick="updGL('${ent.playerId}','outForGame',${!isOut});showGameModal(false)">
             ${isOut?'↩ In':'Out'}
@@ -2324,7 +2337,7 @@ function showGameModal(isNew){
       <button class="btn btn-dim btn-sm" onclick="fixRenumber()">🔧 Fix &amp; Renumber</button>
     </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
-      <thead><tr><th style="width:20px"></th><th style="width:28px">Bat #</th><th>Player</th><th>Inn.</th><th>Positions</th><th>Status</th></tr></thead>
+      <thead><tr><th style="width:20px"></th><th style="width:28px">Bat #</th><th>Player</th><th>Inn.</th><th>Status</th></tr></thead>
       <tbody id="bo-tbody">${activeRows}
       ${benchRows?`<tr><td colspan="6" style="padding:8px;font-size:11px;color:var(--muted);border-top:2px solid var(--border)">Not playing this game:</td></tr>${benchRows}`:''}
       </tbody>
@@ -2350,7 +2363,7 @@ function showGameModal(isNew){
       const inningHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;min-width:72px;padding:4px 4px;font-size:11px;color:var(--muted)">Inn ${i+1}<br/><button class="btn btn-dim btn-xs" style="margin-top:3px;font-size:9px;padding:2px 5px" onclick="showFieldView(${i+1})">🏟 View</button></th>`).join('')
         +`<th style="width:8px;background:var(--navy)"></th>`
         +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--green);background:var(--green)0a;border-left:3px solid var(--green)44">🏆 Winning<br/><span style="font-size:9px;font-weight:400;opacity:.7">Big lead</span></th>`
-        +`<th style="text-align:center;min-width:80px;padding:6px 4px;font-size:11px;color:var(--red);background:var(--red)0a;border-left:2px solid var(--red)33">😤 Down Big<br/><span style="font-size:9px;font-weight:400;opacity:.7">Comeback mode</span></th>`;
+        ;
 
       // Build conflict map: per inning, which positions are used more than once
       const conflictMap={}; // {inn: Set of conflicted positions}
@@ -2449,7 +2462,6 @@ function showGameModal(isNew){
         }).join('');
 
         const winPos=(EG.altGrid.winning[ent.playerId]||{}).position||'';
-        const losePos=(EG.altGrid.losing[ent.playerId]||{}).position||'';
         const winConflict=false; // alt lineups don't conflict-check for now
         const altCells=`<td style="width:8px;background:var(--navy)"></td>
           <td style="padding:3px 2px;text-align:center;background:var(--green)06;border-left:3px solid var(--green)44">
@@ -2458,12 +2470,7 @@ function showGameModal(isNew){
               ${posOpts.replace(`value="${winPos}"`,`value="${winPos}" selected`)}
             </select>
           </td>
-          <td style="padding:3px 2px;text-align:center;background:var(--red)06;border-left:2px solid var(--red)33">
-            <select style="width:72px;font-size:11px;text-align:center;background:${losePos?'var(--red)22':'var(--surface)'};border-color:${losePos?'var(--red)':'var(--border)'}"
-              onchange="updAltGrid('losing','${ent.playerId}',this.value)">
-              ${posOpts.replace(`value="${losePos}"`,`value="${losePos}" selected`)}
-            </select>
-          </td>`;
+`;
 
         const spotBadge=ent.battingSpot?`<span style="color:var(--gold);font-weight:800;font-size:13px;min-width:18px;display:inline-block">${ent.battingSpot}.</span>`:`<span style="color:var(--dim);font-size:11px">—</span>`;
         return `<tr style="border-bottom:1px solid var(--border)">
@@ -2497,7 +2504,13 @@ function showGameModal(isNew){
             : missing.map(p=>`<span style="display:inline-block;background:var(--red)22;color:var(--red);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;margin:1px">${p}</span>`).join('')
           }
         </td>`;
-      }).join('') + '<td style="width:8px"></td><td></td><td></td>';
+      }).join('') + '<td style="width:8px"></td>'
+      + (()=>{
+          const wf=new Set(Object.values(EG.altGrid?.winning||{}).map(c=>c.position||'').filter(p=>p&&p!=='BN'));
+          const wm=FIELD_POS.filter(p=>!wf.has(p));
+          return `<td style="padding:4px 2px;text-align:center;vertical-align:top;background:${wm.length===0?'var(--green)0a':'var(--red)0a'};border-left:3px solid var(--green)44">${wm.length===0?'<span style="color:var(--green);font-size:11px;font-weight:700">✓ Full</span>':wm.map(p=>`<span style="display:inline-block;background:var(--red)22;color:var(--red);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;margin:1px">${p}</span>`).join('')}</td>`;
+        })()
+;
 
       body=`<div style="overflow-x:auto">
         ${anyConflict?'<div style="background:var(--red)18;border:1px solid var(--red)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--red);margin-bottom:8px">⚠ Position conflicts detected — same position assigned to two players in the same inning</div>':''}
@@ -2541,15 +2554,12 @@ function updGrid(inning,spot,pid,pos){
   if(!EG.inningGrid[inning])EG.inningGrid[inning]={};
   const existing=EG.inningGrid[inning][pid]||{};
   EG.inningGrid[inning][pid]={...existing,position:pos};
-  const played=new Set();
-  Object.values(EG.inningGrid).forEach(inn=>Object.values(inn).forEach(c=>{
-    if(c.position&&c.position!=='BN')played.add(c.pid||Object.keys(EG.inningGrid[inning]||{}).find(k=>EG.inningGrid[inning][k]===c)||pid);
-  }));
-  // simpler: just mark the player as played if they have a non-BN position
-  const pid2=pid;
-  const hasPlayed=Object.values(EG.inningGrid).some(inn=>inn[pid2]&&inn[pid2].position&&inn[pid2].position!=='BN');
-  const le=EG.lineup.find(e=>e.playerId===pid2);
+  // Mark playing time
+  const hasPlayed=Object.values(EG.inningGrid).some(inn=>inn[pid]&&inn[pid].position&&inn[pid].position!=='BN');
+  const le=EG.lineup.find(e=>e.playerId===pid);
   if(le&&hasPlayed&&!le.inningsPlayed)le.inningsPlayed=1;
+  // Re-render grid to update streaks, conflicts, missing positions, and field diagrams
+  _gTab='grid';showGameModal(false);
 }
 function updGridSub(inning,origPid,subPid){
   if(!EG)return;
@@ -2559,10 +2569,12 @@ function updGridSub(inning,origPid,subPid){
   if(!subPid){delete existing.subPlayerId;delete existing.subPosition;}
   else{existing.subPlayerId=subPid;existing.subPosition=existing.subPosition||'';}
   EG.inningGrid[inning][origPid]=existing;
+  _gTab='grid';showGameModal(false);
 }
 function updGridSubPos(inning,origPid,pos){
   if(!EG||!EG.inningGrid?.[inning]?.[origPid])return;
   EG.inningGrid[inning][origPid].subPosition=pos;
+  _gTab='grid';showGameModal(false);
 }
 function updAltGrid(scenario,pid,pos){
   if(!EG)return;
@@ -2674,7 +2686,6 @@ function onBODrop(e,targetPid){
   _boDrag=null;
   showGameModal(false);
 }
-function tglGPos(pid,pos,btn){if(!EG)return;const e=EG.lineup.find(x=>x.playerId===pid);if(!e)return;e.positions=e.positions.includes(pos)?e.positions.filter(p=>p!==pos):[...e.positions,pos];btn.classList.toggle('on');}
 function printLineupCard(){
   if(!EG)return;
   const numInnings=EG.innings||6;
@@ -2703,8 +2714,7 @@ function printLineupCard(){
   // Build inning column headers
   const innHeaders=Array.from({length:numInnings},(_,i)=>`<th style="text-align:center;padding:6px 8px;background:#1a1a2e;color:#f0a500;font-size:13px;min-width:80px">Inn ${i+1}</th>`).join('')
     + '<th style="width:6px;background:#0a0a0a"></th>'
-    + '<th style="text-align:center;padding:6px 8px;background:#0d2b0d;color:#2a9d5c;font-size:12px;min-width:80px;border-left:3px solid #2a9d5c">🏆 Win Big</th>'
-    + '<th style="text-align:center;padding:6px 8px;background:#2b0d0d;color:#cc3333;font-size:12px;min-width:80px;border-left:2px solid #cc3333">😤 Down Big</th>';
+    + '<th style="text-align:center;padding:6px 8px;background:#0d2b0d;color:#2a9d5c;font-size:12px;min-width:80px;border-left:3px solid #2a9d5c">🏆 Win Big</th>';
 
   // Build rows — one per player in batting order
   const playerRows=active.map(ent=>{
@@ -2736,7 +2746,6 @@ function printLineupCard(){
       ${cells}
       <td style="width:6px;background:#eee;border:none"></td>
       <td style="text-align:center;padding:5px 4px;border:1px solid #c8e6c8;background:${winBench?'#ffeeee':'#efffef'};font-size:12px;font-weight:700;color:${winBench?'#cc3333':'#1a6b2e'}">${winPos||'—'}</td>
-      <td style="text-align:center;padding:5px 4px;border:1px solid #e6b8b8;background:${loseBench?'#ffeeee':'#efffef'};font-size:12px;font-weight:700;color:${loseBench?'#cc3333':'#1a6b2e'}">${losePos||'—'}</td>
     </tr>`;
   }).join('');
 
@@ -2749,8 +2758,11 @@ function printLineupCard(){
         missing.map(p=>`<span style="background:#ffdddd;color:#cc3333;border-radius:3px;padding:1px 4px;margin:1px;display:inline-block;font-weight:700">${p}</span>`).join('')}
     </td>`;
   }).join('') + '<td style="width:6px;background:#eee;border:none"></td>'
-    + '<td style="padding:4px;text-align:center;border:1px solid #c8e6c8;background:#f0fff0;font-size:10px;font-weight:700;color:#555">Win Big</td>'
-    + '<td style="padding:4px;text-align:center;border:1px solid #e6b8b8;background:#fff0f0;font-size:10px;font-weight:700;color:#555">Down Big</td>';
+    + (()=>{
+        const winFilled=new Set(Object.values(EG.altGrid?.winning||{}).map(c=>c.position||'').filter(p=>p&&p!=='BN'));
+        const winMissing=FIELD_POS.filter(p=>!winFilled.has(p));
+        return `<td style="padding:4px;text-align:center;border:1px solid #c8e6c8;background:#f0fff0;font-size:10px">${winMissing.length===0?'<span style="color:#1a6b2e;font-weight:700">✓ Full</span>':winMissing.map(p=>`<span style="background:#ffdddd;color:#cc3333;border-radius:3px;padding:1px 4px;margin:1px;display:inline-block;font-weight:700">${p}</span>`).join('')}</td>`;
+      })();
 
   // Alt lineups summary (now embedded in main table, separate table below is removed)
   const winRow=active.map(ent=>{
@@ -2759,11 +2771,7 @@ function printLineupCard(){
     const isBench=pos==='BN'||!pos;
     return `<td style="text-align:center;padding:4px;border:1px solid #ddd;background:${isBench?'#ffeeee':'#efffef'};font-size:11px;font-weight:700;color:${isBench?'#cc3333':'#1a6b2e'}">${pos||'—'}</td>`;
   }).join('');
-  const loseRow=active.map(ent=>{
-    const pos=(EG.altGrid?.losing[ent.playerId]||{}).position||'';
-    const isBench=pos==='BN'||!pos;
-    return `<td style="text-align:center;padding:4px;border:1px solid #ddd;background:${isBench?'#ffeeee':'#efffef'};font-size:11px;font-weight:700;color:${isBench?'#cc3333':'#1a6b2e'}">${pos||'—'}</td>`;
-  }).join('');
+
 
   // Out for game
   const outPlayers=EG.lineup.filter(e=>e.outForGame).map(e=>{const p=getPlayer(e.playerId);return p?esc(p.name):''}).filter(Boolean).join(', ');
@@ -2895,29 +2903,87 @@ function saveGame(isNew){if(!EG)return;
 }
 function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();renderTab();updateCounts();}
 function showPT(){
+  const ALL_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX','DP','EH'];
   const rep=DB.players.map(p=>{
     const totI=DB.games.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(parseInt(e?.inningsPlayed)||0);},0);
     const gP=DB.games.filter(g=>(parseInt(g.lineup?.find(l=>l.playerId===p.id)?.inningsPlayed)||0)>0).length;
-    const pc={};const bs=[];
-    DB.games.forEach(g=>{const e=g.lineup?.find(l=>l.playerId===p.id);if(e){(e.positions||[]).forEach(pos=>{pc[pos]=(pc[pos]||0)+1;});if(e.battingSpot>0)bs.push(e.battingSpot);}});
-    return{p,totI,gP,pc,avgB:bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1):'—'};
+    const pc={};const bs=[];let totBench=0;
+    DB.games.forEach(g=>{
+      const e=g.lineup?.find(l=>l.playerId===p.id);
+      if(e&&(parseInt(e.inningsPlayed)||0)>0){
+        if(e.battingSpot>0)bs.push(e.battingSpot);
+        // Count innings played at each position and bench innings
+        Object.values(g.inningGrid||{}).forEach(inn=>{
+          const cell=inn[p.id]||{};
+          const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
+          if(pos==='BN')totBench++;
+          else if(pos)pc[pos]=(pc[pos]||0)+1;
+        });
+      }
+    });
+    const innPerGame=gP>0?(totI/gP).toFixed(1):'—';
+    const benchPerGame=gP>0?(totBench/gP).toFixed(1):'—';
+    return{p,totI,totBench,gP,pc,avgB:bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1):'—',innPerGame,benchPerGame};
   }).sort((a,b)=>b.totI-a.totI);
   const maxI=DB.games.reduce((s,g)=>s+(g.innings||6),0);
+  const usedPos=ALL_POS.filter(pos=>rep.some(r=>r.pc[pos]>0));
+  const maxForPos={};
+  usedPos.forEach(pos=>{maxForPos[pos]=Math.max(...rep.map(r=>r.pc[pos]||0),1);});
+  const posHeaders=usedPos.map(pos=>`<th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">${pos}</th>`).join('');
+
   const rows=rep.map(r=>{
     const pct=maxI>0?Math.round((r.totI/maxI)*100):0;
     const col=pct<50?'var(--red)':pct<75?'var(--gold)':'var(--green)';
-    return `<tr><td style="padding:8px 10px;font-weight:700">#${esc(r.p.number||'—')} ${esc(r.p.name)}</td>
-      <td style="padding:8px 10px;color:var(--muted)">${r.gP}</td>
-      <td style="padding:8px 10px"><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;color:${col}">${r.totI}</span>
-        <div style="display:inline-block;vertical-align:middle;margin-left:8px;background:var(--surface);border-radius:3px;height:5px;width:60px">
+    const benchCol=r.totBench===0?'var(--green)':r.benchPerGame>2?'var(--red)':r.benchPerGame>1?'var(--gold)':'var(--muted)';
+    const posCells=usedPos.map(pos=>{
+      const count=r.pc[pos]||0;
+      const pctBar=Math.round((count/maxForPos[pos])*100);
+      return `<td style="text-align:center;padding:5px 3px">
+        ${count>0?`<div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:var(--gold)">${count}</div>
+        <div style="background:var(--surface);border-radius:2px;height:4px;width:32px;margin:2px auto">
+          <div style="background:var(--gold);height:100%;border-radius:2px;width:${pctBar}%"></div>
+        </div>`:'<span style="color:var(--dim);font-size:11px">—</span>'}
+      </td>`;
+    }).join('');
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 10px;font-weight:700;white-space:nowrap">#${esc(r.p.number||'—')} ${esc(r.p.name)}</td>
+      <td style="text-align:center;padding:7px 6px;color:var(--muted)">${r.gP}</td>
+      <td style="text-align:center;padding:7px 6px">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:${col}">${r.totI}</span>
+        <div style="background:var(--surface);border-radius:3px;height:4px;width:44px;display:inline-block;vertical-align:middle;margin-left:5px">
           <div style="background:${col};height:100%;border-radius:3px;width:${Math.min(pct,100)}%"></div>
-        </div> <span style="font-size:10px;color:var(--muted)">${pct}%</span>
+        </div>
+        <span style="font-size:10px;color:var(--muted);margin-left:3px">${pct}%</span>
       </td>
-      <td style="padding:8px 10px;color:var(--muted)">${r.avgB}</td>
-      <td style="padding:8px 10px">${Object.entries(r.pc).map(([p,c])=>`<span class="badge" style="background:var(--green)22;color:var(--green);font-size:10px">${p}×${c}</span>`).join(' ')||'—'}</td>
+      <td style="text-align:center;padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:var(--blue)">${r.innPerGame}</td>
+      <td style="text-align:center;padding:7px 6px">
+        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:${benchCol}">${r.totBench}</span>
+        <span style="font-size:10px;color:var(--muted);margin-left:4px">(${r.benchPerGame}/gm)</span>
+      </td>
+      <td style="text-align:center;padding:7px 6px;color:var(--muted);font-size:13px">${r.avgB}</td>
+      ${posCells}
     </tr>`;
   }).join('');
-  showModal(`${mhdr('📊 Playing Time Report')}<div style="overflow-x:auto"><table><thead><tr><th>Player</th><th>Games</th><th>Total Inn.</th><th>Avg Bat</th><th>Positions</th></tr></thead><tbody>${rows}</tbody></table></div>`,true);
+
+  showModal(`${mhdr('📊 Playing Time Report')}
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
+      Per-game averages exclude games where player was out. Bench innings shown in 
+      <span style="color:var(--green)">green</span> / 
+      <span style="color:var(--gold)">yellow</span> / 
+      <span style="color:var(--red)">red</span> (0 / 1–2 / 3+).
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th style="text-align:left;padding:6px 10px">Player</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Games</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Total Inn.</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--blue)">Inn/Game</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Bench Inn.</th>
+        <th style="text-align:center;padding:6px 5px;font-size:10px;color:var(--muted)">Avg Bat</th>
+        ${posHeaders}
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`,true);
 }
 
 // ═══ STATS ═══════════════════════════════════════════════
