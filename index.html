@@ -2893,17 +2893,26 @@ function conflictCheck(inn,pos,excludePid){
 function saveGame(isNew){if(!EG)return;
   EG.opponent=document.getElementById('g-opp')?.value||EG.opponent;
   EG.date=document.getElementById('g-date')?.value||EG.date;
-  // Auto-compute inningsPlayed from grid if grid has data
+  // Auto-compute inningsPlayed from grid — only count valid active player IDs
+  const activeSavePids=new Set(EG.lineup.filter(e=>!e.outForGame).map(e=>e.playerId));
   if(EG.inningGrid&&Object.keys(EG.inningGrid).length){
     const pInnings={};
     Object.entries(EG.inningGrid).forEach(([inn,spots])=>{
       Object.entries(spots).forEach(([pid,c])=>{
-          const effPid=c.subPlayerId||pid;
-          const effPos=c.subPlayerId?c.subPosition:c.position;
-          if(effPos&&effPos!=='BN')pInnings[effPid]=(pInnings[effPid]||0)+1;
-        });
+        if(!activeSavePids.has(pid))return; // skip out-for-game and stale entries
+        const effPid=c.subPlayerId||pid;
+        const effPos=c.subPlayerId?c.subPosition:c.position;
+        if(effPos&&effPos!=='BN')pInnings[effPid]=(pInnings[effPid]||0)+1;
+      });
     });
-    EG.lineup.forEach(e=>{if(pInnings[e.playerId]!==undefined)e.inningsPlayed=pInnings[e.playerId];});
+    // Set innings played for all players — out-for-game always get 0
+    EG.lineup.forEach(e=>{
+      if(e.outForGame){e.inningsPlayed=0;}
+      else if(pInnings[e.playerId]!==undefined){e.inningsPlayed=pInnings[e.playerId];}
+    });
+  } else {
+    // No grid data — zero out anyone marked out
+    EG.lineup.forEach(e=>{if(e.outForGame)e.inningsPlayed=0;});
   }
   if(isNew)DB.games.push(EG);else{const i=DB.games.findIndex(g=>g.id===EG.id);if(i>=0)DB.games[i]=EG;}
   scheduleSave();updateCounts();
@@ -2918,8 +2927,8 @@ function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();rende
 function showPT(){
   const ALL_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX','DP','EH'];
   const rep=DB.players.map(p=>{
-    const totI=DB.games.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(parseInt(e?.inningsPlayed)||0);},0);
-    const gP=DB.games.filter(g=>(parseInt(g.lineup?.find(l=>l.playerId===p.id)?.inningsPlayed)||0)>0).length;
+    const totI=DB.games.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(e&&!e.outForGame?parseInt(e.inningsPlayed)||0:0);},0);
+    const gP=DB.games.filter(g=>{const e=g.lineup?.find(l=>l.playerId===p.id);return e&&!e.outForGame&&(parseInt(e.inningsPlayed)||0)>0;}).length;
     const pc={};const bs=[];let totBench=0;
     DB.games.forEach(g=>{
       const e=g.lineup?.find(l=>l.playerId===p.id);
