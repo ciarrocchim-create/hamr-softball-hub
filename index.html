@@ -2498,6 +2498,11 @@ function showGameModal(isNew){
       const copyBtns=Array.from({length:numInnings},(_,inn)=>inn===0?'<td></td>':`<td style="text-align:center;padding:2px 2px"><button class="btn btn-dim btn-xs" onclick="copyInning(${inn})" title="Copy Inn ${inn}">↙${inn}</button></td>`).join('')
         +'<td style="width:8px"></td><td></td><td></td>';
 
+      const clearBtns='<td style="padding:2px 6px;font-size:9px;color:var(--muted);font-weight:700;white-space:nowrap">✕ clear:</td>'
+        +Array.from({length:numInnings},(_,inn)=>
+          `<td style="text-align:center;padding:2px 2px"><button class="btn btn-xs" style="background:var(--red)18;color:var(--red);border:1px solid var(--red)33;padding:2px 6px;font-size:9px;border-radius:4px;cursor:pointer" onclick="clearInning(${inn+1})">Inn ${inn+1}</button></td>`
+        ).join('') + '<td style="width:8px"></td><td></td><td></td>';
+
       const anyConflict=Object.values(conflictMap).some(s=>s.size>0);
 
       // Build "missing positions" footer row per inning
@@ -2536,6 +2541,7 @@ function showGameModal(isNew){
           <thead>
             <tr><th style="text-align:left;padding:6px 8px;font-size:11px;min-width:110px">Player</th>${inningHeaders}</tr>
             <tr style="background:var(--dim)">${copyBtns}</tr>
+            <tr style="background:var(--red)0a">${clearBtns}</tr>
           </thead>
           <tbody>${gridRows}
           ${outRow?`<tr><td colspan="${numInnings+4}" style="padding:8px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)">Not playing: ${outRow}</td></tr>`:''}
@@ -2597,6 +2603,12 @@ function copyInning(fromInn){
   if(!EG.inningGrid)EG.inningGrid={};
   const src=EG.inningGrid[fromInn]||{};
   EG.inningGrid[fromInn+1]=JSON.parse(JSON.stringify(src));
+  showGameModal(false);
+}
+function clearInning(inn){
+  if(!EG)return;
+  if(!EG.inningGrid)EG.inningGrid={};
+  EG.inningGrid[inn]={};
   showGameModal(false);
 }
 function updGL(pid,f,v){if(EG){const e=EG.lineup.find(x=>x.playerId===pid);if(e)e[f]=v;}}
