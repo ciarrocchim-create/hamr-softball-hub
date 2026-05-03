@@ -1557,19 +1557,25 @@ function dlCoachSheet(id){
         const qIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[])])];
         const qDrills=qIds.map(id=>getDrill(id)).filter(Boolean);
         const drillNames=qDrills.length?qDrills.map(x=>esc(x.name)).join(' + '):(st.customName||'—');
-        return `<tr style="background:#f5f8ff;border-bottom:1px solid #e8eeff">
-          <td style="padding:5px 12px 5px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5">${esc(st.stationLabel||'Station '+(si+1))}</td>
-          <td style="padding:5px 12px;font-size:11px;font-weight:700">${drillNames}</td>
-          <td style="padding:5px 12px;font-size:11px;text-align:right">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td>
+        return `<tr style="background:#f5f8ff;border-bottom:1px solid #e8eeff;vertical-align:top">
+          <td style="padding:5px 12px 5px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5;white-space:nowrap">${esc(st.stationLabel||'Station '+(si+1))}</td>
+          <td style="padding:5px 12px">
+            <div style="font-size:11px;font-weight:700">${drillNames}</div>
+            ${st.notes?`<div style="font-size:10px;color:#c07000;margin-top:3px;padding:3px 7px;background:#fff8e0;border-left:2px solid #f0a500;border-radius:2px">${esc(st.notes)}</div>`:''}
+          </td>
+          <td style="padding:5px 12px;font-size:11px;text-align:right;white-space:nowrap">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td>
         </tr>`;
       }).join('');
       return `<tr style="background:#ddeaff"><td style="padding:7px 12px;font-size:11px;font-weight:800;color:#5b8af5">${esc(ts[item.blockId]||'')}</td><td colspan="2" style="font-size:12px;font-weight:800;color:#5b8af5">⊞ STATIONS</td></tr>${subrows}`;
     } else {
       qti++;const d=item.drillId?getDrill(item.drillId):null;const name=d?d.name:(item.customName||'Custom');
-      return `<tr style="border-bottom:1px solid #eee">
-        <td style="padding:6px 12px;font-size:11px;color:#888;font-weight:700;width:110px">${esc(ts[item.id]||'')}</td>
-        <td style="padding:6px 12px;font-size:12px;font-weight:700">${qti}. ${esc(name)}</td>
-        <td style="padding:6px 12px;font-size:11px;text-align:right">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td>
+      return `<tr style="border-bottom:1px solid #eee;vertical-align:top">
+        <td style="padding:6px 12px;font-size:11px;color:#888;font-weight:700;width:110px;white-space:nowrap">${esc(ts[item.id]||'')}</td>
+        <td style="padding:6px 12px">
+          <div style="font-size:12px;font-weight:700">${qti}. ${esc(name)}</div>
+          ${item.notes?`<div style="font-size:10px;color:#c07000;margin-top:3px;padding:3px 7px;background:#fff8e0;border-left:2px solid #f0a500;border-radius:2px">${esc(item.notes)}</div>`:''}
+        </td>
+        <td style="padding:6px 12px;font-size:11px;text-align:right;white-space:nowrap">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td>
       </tr>`;
     }
   }).join('');
@@ -1689,7 +1695,7 @@ function dlPlan(id){
           <td style="padding:6px 12px 6px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5;white-space:nowrap">${esc(st.stationLabel||'Station '+(si+1))}</td>
           <td style="padding:6px 12px">
             ${drillCell}
-            ${st.notes?`<div style="font-size:10px;color:#777;margin-top:3px;font-style:italic">${esc(st.notes)}</div>`:''}
+            ${st.notes?`<div style="font-size:10px;color:#b07800;margin-top:4px;padding:3px 7px;background:#fffbf0;border-left:2px solid #f0a500;border-radius:2px">${esc(st.notes)}</div>`:''}
           </td>
           <td style="padding:6px 12px;font-size:11px;text-align:right;white-space:nowrap">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td>
         </tr>`;
@@ -1701,7 +1707,7 @@ function dlPlan(id){
         <td style="padding:7px 12px;font-size:11px;color:#888;font-weight:700;width:130px;white-space:nowrap">${esc(ts[item.id]||'')}</td>
         <td style="padding:7px 12px">
           <div style="font-size:12px;font-weight:700">${qti}. ${esc(name)}${d?` <span style="font-size:10px;font-weight:400;color:#888">[${d.category}]</span>`:''}</div>
-          ${item.notes?`<div style="font-size:10px;color:#777;margin-top:3px;font-style:italic">${esc(item.notes)}</div>`:''}
+          ${item.notes?`<div style="font-size:10px;color:#b07800;margin-top:4px;padding:3px 7px;background:#fffbf0;border-left:2px solid #f0a500;border-radius:2px">${esc(item.notes)}</div>`:''}
         </td>
         <td style="padding:7px 12px;font-size:11px;text-align:right;white-space:nowrap">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td>
       </tr>`;
