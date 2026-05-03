@@ -361,8 +361,8 @@ const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catchin
 const GIST_ID_KEY='sh_gist_id';
 const GH_TOKEN_KEY='sh_gh_token';
 const SEED_GAMES=[
-  {opponent:'CLLL',date:'2026-04-26',location:'Home',innings:6,score:23,oppScore:9,result:'W'},
-  {opponent:'East Hampton',date:'2026-04-30',location:'Away',innings:6,score:10,oppScore:12,result:'L'},
+  {opponent:'CLLL',date:'2026-04-26',location:'Home',innings:6,score:23,oppScore:9,result:'W',played:true},
+  {opponent:'East Hampton',date:'2026-04-30',location:'Away',innings:6,score:10,oppScore:12,result:'L',played:true},
   {opponent:'Colchester',date:'2026-05-02',location:'Home',innings:6},
   {opponent:'Willimantic',date:'2026-05-05',location:'Away',innings:6},
   {opponent:'Colchester',date:'2026-05-09',location:'Away',innings:6},
@@ -2420,7 +2420,7 @@ function renderLineups(){
               ${g.location?`<span class="badge" style="background:var(--dim);color:var(--muted)">${g.location}</span>`:''}
               <span class="badge" style="background:var(--dim);color:var(--muted)">${g.innings} inn.</span>
               ${g.result?`<span class="badge" style="background:${g.result==='W'?'var(--green)':'var(--red)'}22;color:${g.result==='W'?'var(--green)':'var(--red)'}">
-                ${g.result} ${g.score}-${g.oppScore}</span>`:'<span class="badge" style="background:var(--blue)22;color:var(--blue)">Upcoming</span>'}
+                ${g.result} ${g.score}-${g.oppScore}</span>`:g.played?'<span class="badge" style="background:var(--green)22;color:var(--green)">✓ Played</span>':'<span class="badge" style="background:var(--blue)22;color:var(--blue)">Upcoming</span>'}
               ${active.length?`<span class="badge" style="background:var(--dim);color:var(--muted)">${active.length} players</span>`:''}
             </div>
           </div>
@@ -2477,10 +2477,14 @@ function showGameModal(isNew){
       </select></div>
       <div><div class="lbl">Innings</div><select style="width:70px" onchange="EG.innings=parseInt(this.value);showGameModal(${isNew})">${[4,5,6,7].map(n=>`<option value="${n}"${EG.innings===n?' selected':''}>${n}</option>`).join('')}</select></div>
     </div>
-    <div class="row" style="gap:8px;margin-bottom:14px;align-items:flex-end">
+    <div class="row" style="gap:8px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
       <div><div class="lbl">Our Score</div><input type="number" id="g-score" value="${EG.score??''}" placeholder="—" style="width:70px" onchange="updScore('score',this.value)"/></div>
       <div><div class="lbl">Their Score</div><input type="number" id="g-oppscore" value="${EG.oppScore??''}" placeholder="—" style="width:70px" onchange="updScore('oppScore',this.value)"/></div>
       <div style="padding-bottom:2px">${EG.score!==undefined&&EG.oppScore!==undefined?`<span class="badge" style="font-size:14px;padding:5px 12px;background:${EG.score>EG.oppScore?'var(--green)22':'var(--red)22'};color:${EG.score>EG.oppScore?'var(--green)':'var(--red)'}">${EG.score>EG.oppScore?'W':'L'} ${EG.score}-${EG.oppScore}</span>`:'<span style="color:var(--muted);font-size:12px">Enter scores above</span>'}</div>
+      <div style="padding-bottom:4px;display:flex;align-items:center;gap:6px;margin-left:8px">
+        <input type="checkbox" id="g-played" ${EG.played?'checked':''} onchange="EG.played=this.checked" style="width:16px;height:16px;cursor:pointer"/>
+        <label for="g-played" style="font-size:12px;font-weight:700;cursor:pointer;color:${EG.played?'var(--green)':'var(--muted)'}">✓ Game Played</label>
+      </div>
     </div>`;
 
   let body='';
@@ -3120,6 +3124,8 @@ function saveGame(isNew){if(!EG)return;
   const osc=parseInt(document.getElementById('g-oppscore')?.value);
   if(!isNaN(sc))EG.score=sc; if(!isNaN(osc))EG.oppScore=osc;
   if(EG.score!==undefined&&EG.oppScore!==undefined)EG.result=EG.score>EG.oppScore?'W':EG.score<EG.oppScore?'L':'T';
+  EG.played=document.getElementById('g-played')?.checked||EG.played||false;
+  if(EG.result)EG.played=true; // auto-mark played if result is set
   // Auto-compute inningsPlayed from grid — only count valid active player IDs
   const activeSavePids=new Set(EG.lineup.filter(e=>!e.outForGame).map(e=>e.playerId));
   if(EG.inningGrid&&Object.keys(EG.inningGrid).length){
@@ -3154,7 +3160,8 @@ function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();rende
 function showPT(){
   const ALL_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX','DP','EH'];
   // Only include completed games (have a result OR have inningsPlayed > 0 for any player)
-  const completedGames=DB.games.filter(g=>g.result||(g.lineup||[]).some(e=>(parseInt(e.inningsPlayed)||0)>0));
+  // Completed = explicitly marked as played OR has a result set
+  const completedGames=DB.games.filter(g=>g.played||(g.result==='W'||g.result==='L'||g.result==='T'));
   const rep=DB.players.map(p=>{
     const totI=completedGames.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(e&&!e.outForGame?parseInt(e.inningsPlayed)||0:0);},0);
     const gP=completedGames.filter(g=>{const e=g.lineup?.find(l=>l.playerId===p.id);return e&&!e.outForGame&&(parseInt(e.inningsPlayed)||0)>0;}).length;
