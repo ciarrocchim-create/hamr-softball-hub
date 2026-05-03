@@ -3153,15 +3153,16 @@ function saveGame(isNew){if(!EG)return;
 function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();renderTab();updateCounts();}
 function showPT(){
   const ALL_POS=['P','C','1B','2B','3B','SS','LF','CF','RF','FLEX','DP','EH'];
+  // Only include completed games (have a result OR have inningsPlayed > 0 for any player)
+  const completedGames=DB.games.filter(g=>g.result||(g.lineup||[]).some(e=>(parseInt(e.inningsPlayed)||0)>0));
   const rep=DB.players.map(p=>{
-    const totI=DB.games.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(e&&!e.outForGame?parseInt(e.inningsPlayed)||0:0);},0);
-    const gP=DB.games.filter(g=>{const e=g.lineup?.find(l=>l.playerId===p.id);return e&&!e.outForGame&&(parseInt(e.inningsPlayed)||0)>0;}).length;
+    const totI=completedGames.reduce((s,g)=>{const e=g.lineup?.find(l=>l.playerId===p.id);return s+(e&&!e.outForGame?parseInt(e.inningsPlayed)||0:0);},0);
+    const gP=completedGames.filter(g=>{const e=g.lineup?.find(l=>l.playerId===p.id);return e&&!e.outForGame&&(parseInt(e.inningsPlayed)||0)>0;}).length;
     const pc={};const bs=[];let totBench=0;
-    DB.games.forEach(g=>{
+    completedGames.forEach(g=>{
       const e=g.lineup?.find(l=>l.playerId===p.id);
       if(e&&(parseInt(e.inningsPlayed)||0)>0){
         if(e.battingSpot>0)bs.push(e.battingSpot);
-        // Count innings played at each position and bench innings
         Object.values(g.inningGrid||{}).forEach(inn=>{
           const cell=inn[p.id]||{};
           const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
@@ -3174,7 +3175,7 @@ function showPT(){
     const benchPerGame=gP>0?(totBench/gP).toFixed(1):'—';
     return{p,totI,totBench,gP,pc,avgB:bs.length?(bs.reduce((a,b)=>a+b,0)/bs.length).toFixed(1):'—',innPerGame,benchPerGame};
   }).sort((a,b)=>b.totI-a.totI);
-  const maxI=DB.games.reduce((s,g)=>s+(g.innings||6),0);
+  const maxI=completedGames.reduce((s,g)=>s+(g.innings||6),0);
   const usedPos=ALL_POS.filter(pos=>rep.some(r=>r.pc[pos]>0));
   const maxForPos={};
   usedPos.forEach(pos=>{maxForPos[pos]=Math.max(...rep.map(r=>r.pc[pos]||0),1);});
@@ -3183,7 +3184,7 @@ function showPT(){
   const rows=rep.map(r=>{
     const pct=maxI>0?Math.round((r.totI/maxI)*100):0;
     const col=pct<50?'var(--red)':pct<75?'var(--gold)':'var(--green)';
-    const benchCol=r.totBench===0?'var(--green)':r.benchPerGame>2?'var(--red)':r.benchPerGame>1?'var(--gold)':'var(--muted)';
+    const benchCol=r.totBench===0?'var(--green)':parseFloat(r.benchPerGame)>2?'var(--red)':parseFloat(r.benchPerGame)>1?'var(--gold)':'var(--muted)';
     const posCells=usedPos.map(pos=>{
       const count=r.pc[pos]||0;
       const pctBar=Math.round((count/maxForPos[pos])*100);
@@ -3206,8 +3207,8 @@ function showPT(){
       </td>
       <td style="text-align:center;padding:7px 6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:var(--blue)">${r.innPerGame}</td>
       <td style="text-align:center;padding:7px 6px">
-        <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:${benchCol}">${r.totBench}</span>
-        <span style="font-size:10px;color:var(--muted);margin-left:4px">(${r.benchPerGame}/gm)</span>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:${benchCol}">${r.benchPerGame}/gm</div>
+        <div style="font-size:10px;color:var(--muted)">${r.totBench} total</div>
       </td>
       <td style="text-align:center;padding:7px 6px;color:var(--muted);font-size:13px">${r.avgB}</td>
       ${posCells}
@@ -3216,10 +3217,7 @@ function showPT(){
 
   showModal(`${mhdr('📊 Playing Time Report')}
     <div style="font-size:11px;color:var(--muted);margin-bottom:10px">
-      Per-game averages exclude games where player was out. Bench innings shown in 
-      <span style="color:var(--green)">green</span> / 
-      <span style="color:var(--gold)">yellow</span> / 
-      <span style="color:var(--red)">red</span> (0 / 1–2 / 3+).
+      Completed games only (${completedGames.length} of ${DB.games.length}). Per-game averages exclude games where player was out. Bench: <span style="color:var(--green)">green</span> / <span style="color:var(--gold)">yellow</span> / <span style="color:var(--red)">red</span> (0 / ≤1/gm / >2/gm).
     </div>
     <div style="overflow-x:auto"><table>
       <thead><tr>
