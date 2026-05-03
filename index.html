@@ -2810,6 +2810,7 @@ function updAltGrid(scenario,pid,pos){
   if(!EG)return;
   if(!EG.altGrid)EG.altGrid={winning:{},losing:{}};
   EG.altGrid[scenario][pid]={position:pos};
+  _gTab='grid';showGameModal(false);
 }
 function copyInning(fromInn){
   if(!EG)return;
@@ -3284,12 +3285,38 @@ function handleStatsCSV(input){
     const lbl=document.getElementById('s-lbl').value||'Import';
     const dt=document.getElementById('s-dt').value||new Date().toISOString().slice(0,10);
     const mapped=rows.map(row=>{
-      const rawName=(row['Player Name']||row['Name']||row['Player']||'').trim();
-      const matched=DB.players.find(p=>p.name.toLowerCase()===rawName.toLowerCase()||p.name.toLowerCase().split(' ')[0]===rawName.toLowerCase().split(' ')[0]);
-      return{...row,_playerId:matched?.id||null,_label:lbl,_date:dt};
+      const rawName=(row['Player Name']||row['Name']||row['Player']||row['Full Name']||'').trim();
+      // Normalize: lowercase, remove punctuation, collapse spaces
+      const norm=s=>s.toLowerCase().replace(/[^a-z\s]/g,'').replace(/\s+/g,' ').trim();
+      const normRaw=norm(rawName);
+      // Try multiple matching strategies
+      const matched=DB.players.find(p=>{
+        const normP=norm(p.name);
+        // 1. Exact match
+        if(normP===normRaw)return true;
+        // 2. Last name + first initial (e.g. "Bartolotta L")
+        const parts=normRaw.split(' ');
+        const pParts=normP.split(' ');
+        if(parts.length>=2&&pParts.length>=2){
+          // Last name match + first initial or name match
+          if(pParts[pParts.length-1]===parts[parts.length-1]&&(pParts[0]===parts[0]||pParts[0][0]===parts[0][0]))return true;
+          // GC sometimes puts last name first
+          if(pParts[pParts.length-1]===parts[0]&&pParts[0][0]===parts[parts.length-1]?.[0])return true;
+        }
+        // 3. First name only match (risky but fallback)
+        if(pParts[0]===parts[0]&&parts.length===1)return true;
+        // 4. Last name only match
+        if(pParts[pParts.length-1]===normRaw)return true;
+        // 5. Jersey number match if row has # field
+        const jersey=row['#']||row['Jersey']||row['Number']||'';
+        if(jersey&&p.number&&jersey.trim()===p.number.trim())return true;
+        return false;
+      });
+      return{...row,_playerId:matched?.id||null,_rawName:rawName,_label:lbl,_date:dt};
     });
     document.getElementById('stats-preview').innerHTML=`
       <div style="color:var(--green);font-weight:700;margin-bottom:8px">${mapped.length} rows parsed — ${mapped.filter(r=>r._playerId).length} matched to roster</div>
+      ${mapped.filter(r=>!r._playerId).length?`<div style="font-size:12px;color:var(--red);margin-bottom:8px">⚠ ${mapped.filter(r=>!r._playerId).length} unmatched — names from file: ${[...new Set(mapped.filter(r=>!r._playerId).map(r=>r._rawName||r['Player Name']||r['Name']||'?'))].join(', ')}</div>`:''}
       <div class="row" style="gap:8px">
         <button class="btn btn-gold" onclick="confirmStats(${JSON.stringify(mapped).replace(/'/g,'&#39;').replace(/\//g,'&#47;')})">✓ Import</button>
         <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
