@@ -1473,8 +1473,8 @@ function viewPlan(id){
           <div class="f1">
             <div style="font-weight:700;font-size:13px;margin-bottom:3px">${esc(d.name)}</div>
             <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span>
-            ${tip.note?`<div style="font-size:12px;color:var(--muted);margin-top:5px;font-style:italic">${esc(tip.note)}</div>`:''}
-            <div style="margin-top:5px"><a href="${d.url}" target="_blank" style="font-size:11px;color:var(--gold)">▶ Watch on YouTube</a></div>
+            ${tip.note?`<div style="font-size:12px;color:var(--text);margin-top:6px;padding:6px 10px;background:var(--navy);border-radius:6px;border-left:3px solid var(--gold);line-height:1.6">${esc(tip.note)}</div>`:''}
+            <div style="margin-top:6px"><a href="${d.url}" target="_blank" style="font-size:11px;color:var(--gold)">▶ Watch on YouTube</a></div>
           </div>
         </div>`;
       }).join('')}
@@ -1595,7 +1595,7 @@ function dlCoachSheet(id){
         ${vid?`<a href="${d.url}" target="_blank" style="flex-shrink:0"><img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:100px;border-radius:6px;display:block"/></a>`:''}
         <div>
           <div style="font-weight:800;font-size:13px;margin-bottom:2px">${esc(d.name)}</div>
-          ${tip.note?`<div style="font-size:11px;color:#555;font-style:italic;margin-bottom:4px">${esc(tip.note)}</div>`:''}
+          ${tip.note?`<div style="font-size:11px;color:#333;margin-bottom:6px;padding:5px 8px;background:#f8f2ff;border-left:3px solid #c97af5;border-radius:3px;line-height:1.6">${esc(tip.note)}</div>`:''}
           <a href="${d.url}" target="_blank" style="font-size:11px;color:#c97af5;font-weight:700">▶ Watch on YouTube</a>
         </div>
       </div>`;
