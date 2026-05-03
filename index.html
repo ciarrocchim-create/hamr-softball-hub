@@ -360,6 +360,24 @@ const TYPE_COLOR={'Drill':'#5b8af5','Tip':'#c97af5','Warmup':'#3ddc84','Progress
 const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catching:'#c97af5',Baserunning:'#f5a05b',Conditioning:'#f16b6b',Other:'#7b88a8'};
 const GIST_ID_KEY='sh_gist_id';
 const GH_TOKEN_KEY='sh_gh_token';
+const SEED_GAMES=[
+  {opponent:'CLLL',date:'2026-04-26',location:'Home',innings:6,score:23,oppScore:9,result:'W'},
+  {opponent:'East Hampton',date:'2026-04-30',location:'Away',innings:6,score:10,oppScore:12,result:'L'},
+  {opponent:'Colchester',date:'2026-05-02',location:'Home',innings:6},
+  {opponent:'Willimantic',date:'2026-05-05',location:'Away',innings:6},
+  {opponent:'Colchester',date:'2026-05-09',location:'Away',innings:6},
+  {opponent:'East Hampton',date:'2026-05-13',location:'Away',innings:6},
+  {opponent:'SFC',date:'2026-05-15',location:'Home',innings:6},
+  {opponent:'CLL',date:'2026-05-16',location:'Away',innings:6},
+  {opponent:'Willimantic',date:'2026-05-23',location:'Home',innings:6},
+  {opponent:'Willimantic-2',date:'2026-05-23',location:'Home',innings:6},
+  {opponent:'Norwich',date:'2026-05-30',location:'Home',innings:6},
+  {opponent:'Preston',date:'2026-05-30',location:'Home',innings:6},
+  {opponent:'SFC',date:'2026-06-02',location:'Away',innings:6},
+  {opponent:'Willimantic-2',date:'2026-06-04',location:'Away',innings:6},
+  {opponent:'Norwich',date:'2026-06-06',location:'Away',innings:6},
+  {opponent:'CLL',date:'2026-06-13',location:'Home',innings:6},
+];
 const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[],jokes:[]};
 
 // ═══ STATE ══════════════════════════════════════════════
@@ -429,6 +447,10 @@ async function gistLoad(gid,token){
   }
   if(!merged.players||merged.players.length===0){
     merged.players=SEED_PLAYERS.map(p=>({...p,id:uid()}));
+  }
+  // Seed schedule games if none exist yet
+  if(!merged.games||merged.games.length===0){
+    merged.games=SEED_GAMES.map(g=>({...g,id:uid(),lineup:[],inningGrid:{},altGrid:{winning:{}}}));
   }
   if(!merged.playerSkills)merged.playerSkills=[];
   return merged;
@@ -940,8 +962,8 @@ function renderPlans(){
     }).join('');
   return `<div class="row" style="margin-bottom:18px"><h2 class="st">📋 Practice Plans</h2><div class="f1"></div><button class="btn btn-gold" onclick="openNewPlan()">+ New Plan</button></div>${rows}`;
 }
-function openNewPlan(){EP={id:uid(),title:'',date:new Date().toISOString().slice(0,10),startTime:'',endTime:'',notes:'',setupTasks:[],coachTips:[],items:[]};showPlanEditor(true);}
-function openPlanEdit(id){EP=JSON.parse(JSON.stringify(DB.plans.find(p=>p.id===id)));if(!EP.setupTasks)EP.setupTasks=[];if(!EP.coachTips)EP.coachTips=[];showPlanEditor(false);}
+function openNewPlan(){EP={id:uid(),title:'',date:new Date().toISOString().slice(0,10),startTime:'',endTime:'',notes:'',setupTasks:[],coachTips:[],checklist:[],items:[]};showPlanEditor(true);}
+function openPlanEdit(id){EP=JSON.parse(JSON.stringify(DB.plans.find(p=>p.id===id)));if(!EP.setupTasks)EP.setupTasks=[];if(!EP.coachTips)EP.coachTips=[];if(!EP.checklist)EP.checklist=[];showPlanEditor(false);}
 function dupPlan(id){
   const src=DB.plans.find(p=>p.id===id);
   const c=JSON.parse(JSON.stringify(src));
@@ -1102,6 +1124,21 @@ function showPlanEditor(isNew){
     }).join('')}
   </div>`;
 
+  const checklistHtml=`<div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+    <div class="row" style="margin-bottom:10px">
+      <div style="font-weight:700;font-size:14px">✅ Coach Reminders & Checklist</div>
+      <div class="f1"></div>
+      <button class="btn btn-dim btn-xs" onclick="addCheckItem()">+ Add Item</button>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Things to remember, concepts to mention, conversations to have with a player.</div>
+    ${(EP.checklist||[]).length===0?'<div style="font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px">No reminders yet.</div>':''}
+    ${(EP.checklist||[]).map((item,i)=>`<div style="display:flex;gap:8px;margin-bottom:7px;align-items:center">
+      <span style="font-size:16px;cursor:pointer;color:${item.done?'var(--green)':'var(--border)'}" onclick="EP.checklist[${i}].done=!EP.checklist[${i}].done;rPE(!DB.plans.find(p=>p.id===EP.id))">${item.done?'☑':'☐'}</span>
+      <input class="f1" value="${esc(item.text)}" placeholder="e.g. Talk to Luciana about her stance, mention hip rotation concept…" onchange="EP.checklist[${i}].text=this.value" style="${item.done?'text-decoration:line-through;color:var(--muted)':''}"/>
+      <button class="btn btn-red btn-xs" onclick="rmCheckItem(${i})">✕</button>
+    </div>`).join('')}
+  </div>`;
+
   const setupHtml=`<div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
     <div class="row" style="margin-bottom:10px">
       <div style="font-weight:700;font-size:14px">🔧 Pre-Practice Setup</div>
@@ -1132,6 +1169,7 @@ function showPlanEditor(isNew){
       <div><div class="lbl">Theme / Notes</div><textarea id="pln" rows="2" placeholder="Goals, themes, focus for this practice…">${esc(EP.notes)}</textarea></div>
       ${setupHtml}
       ${coachTipsHtml}
+      ${checklistHtml}
       <div style="border-top:1px solid var(--border);padding-top:14px">
         <div class="row" style="margin-bottom:10px">
           <div style="font-weight:700;font-size:14px">Activities</div>
@@ -1294,6 +1332,8 @@ function mvBlk(bid,dir){
   EP.items=groups.flat();syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));
 }
 function addSetupTask(){if(!EP)return;EP.setupTasks.push({task:'',coach:''});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function addCheckItem(){if(!EP)return;if(!EP.checklist)EP.checklist=[];EP.checklist.push({text:'',done:false});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
+function rmCheckItem(i){if(!EP)return;EP.checklist.splice(i,1);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
 function addCoachTip(){if(!EP)return;if(!EP.coachTips)EP.coachTips=[];EP.coachTips.push({drillId:null,note:''});syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
 function rmCoachTip(i){if(!EP)return;EP.coachTips.splice(i,1);syncEP();rPE(!DB.plans.find(p=>p.id===EP.id));}
 function updCoachTip(i,field,val){if(!EP||!EP.coachTips)return;EP.coachTips[i][field]=val;}
@@ -1406,9 +1446,17 @@ function viewPlan(id){
       <div class="f1"></div>
       <button class="btn btn-dim btn-sm" onclick="copyPlanLink('${id}')">🔗 Copy Link</button>
       <button class="btn btn-dim btn-sm" onclick="emailPlan('${id}')">✉ Email</button>
+      <button class="btn btn-blue btn-sm" onclick="dlCoachSheet('${id}')">📋 Coach Sheet</button>
       <button class="btn btn-gold btn-sm" onclick="dlPlan('${id}')">🖨 Download</button>
     </div>
     ${p.notes?`<div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;border-left:4px solid var(--gold);font-size:13px;color:var(--muted);line-height:1.7">${esc(p.notes)}</div>`:''}
+    ${(p.checklist||[]).length?`<div style="background:var(--surface);border-radius:8px;padding:14px;margin-bottom:16px;border:1px solid var(--border)">
+      <div style="font-weight:700;font-size:13px;color:var(--text);margin-bottom:10px">✅ Coach Reminders</div>
+      ${(p.checklist||[]).map(item=>`<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:6px;font-size:13px">
+        <span style="color:${item.done?'var(--green)':'var(--muted)'};font-size:16px">${item.done?'☑':'☐'}</span>
+        <span style="${item.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(item.text)}</span>
+      </div>`).join('')}
+    </div>`:''}
     ${setupHtml}
     ${(p.coachTips||[]).length?`<div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;border:1px solid var(--border)">
       <div style="font-weight:700;font-size:13px;color:var(--purple,#c97af5);margin-bottom:10px">🎬 Coach Tips — Watch Before Practice</div>
@@ -1480,6 +1528,135 @@ function emailPlan(id){
 }
 
 // ── DOWNLOAD ──
+function dlCoachSheet(id){
+  const p=DB.plans.find(x=>x.id===id);if(!p)return;
+  const tot=totalMin(p);
+
+  // Quick schedule
+  const ts={};
+  if(p.startTime){
+    const[sh,sm]=p.startTime.split(':').map(Number);let mins=sh*60+sm;const seen=new Set();
+    (p.items||[]).forEach(item=>{
+      const key=item.type==='station'?item.blockId:item.id;
+      if(item.type==='station'&&seen.has(item.blockId))return;if(item.type==='station')seen.add(item.blockId);
+      const dur=parseInt(item.duration)||0;
+      const h=Math.floor(mins/60)%12||12,mn=String(mins%60).padStart(2,'0'),ap=mins<720?'am':'pm';
+      const em=mins+dur,eh=Math.floor(em/60)%12||12,emn=String(em%60).padStart(2,'0'),eap=em<720?'am':'pm';
+      ts[key]=dur>0?`${h}:${mn}${ap} – ${eh}:${emn}${eap}`:`${h}:${mn}${ap}`;
+      mins+=dur;
+    });
+  }
+
+  // Quick schedule rows
+  const seen2=new Set();let qti=0;
+  const qrows=(p.items||[]).map(item=>{
+    if(item.type==='station'){
+      if(seen2.has(item.blockId))return'';seen2.add(item.blockId);
+      const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
+      const subrows=sts.map((st,si)=>{
+        const qIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[])])];
+        const qDrills=qIds.map(id=>getDrill(id)).filter(Boolean);
+        const drillNames=qDrills.length?qDrills.map(x=>esc(x.name)).join(' + '):(st.customName||'—');
+        return `<tr style="background:#f5f8ff;border-bottom:1px solid #e8eeff">
+          <td style="padding:5px 12px 5px 24px;font-size:10px;color:#5b8af5;font-weight:700;border-left:3px solid #5b8af5">${esc(st.stationLabel||'Station '+(si+1))}</td>
+          <td style="padding:5px 12px;font-size:11px;font-weight:700">${drillNames}</td>
+          <td style="padding:5px 12px;font-size:11px;text-align:right">${st.coach?`👤 <b>${esc(st.coach)}</b>`:''}</td>
+        </tr>`;
+      }).join('');
+      return `<tr style="background:#ddeaff"><td style="padding:7px 12px;font-size:11px;font-weight:800;color:#5b8af5">${esc(ts[item.blockId]||'')}</td><td colspan="2" style="font-size:12px;font-weight:800;color:#5b8af5">⊞ STATIONS</td></tr>${subrows}`;
+    } else {
+      qti++;const d=item.drillId?getDrill(item.drillId):null;const name=d?d.name:(item.customName||'Custom');
+      return `<tr style="border-bottom:1px solid #eee">
+        <td style="padding:6px 12px;font-size:11px;color:#888;font-weight:700;width:110px">${esc(ts[item.id]||'')}</td>
+        <td style="padding:6px 12px;font-size:12px;font-weight:700">${qti}. ${esc(name)}</td>
+        <td style="padding:6px 12px;font-size:11px;text-align:right">${item.coach?`👤 <b>${esc(item.coach)}</b>`:''}</td>
+      </tr>`;
+    }
+  }).join('');
+
+  // Setup tasks
+  const setupHtml=(p.setupTasks||[]).length?`<div style="margin-bottom:18px">
+    <div style="font-size:12px;font-weight:800;color:#b07800;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">🔧 Pre-Practice Setup</div>
+    <table style="width:100%;border-collapse:collapse;border:1px solid #f0e0a0;border-radius:6px;overflow:hidden">
+      ${(p.setupTasks||[]).map((t,i)=>`<tr style="border-bottom:1px solid #f0e0a0;background:${i%2===0?'#fffbf0':'#fff8e0'}">
+        <td style="padding:6px 10px;font-size:11px;color:#888;width:20px">${i+1}.</td>
+        <td style="padding:6px 10px;font-size:12px">${esc(t.task)}</td>
+        <td style="padding:6px 10px;font-size:11px;font-weight:700;color:#b07800;text-align:right">${t.coach?'👤 '+esc(t.coach):''}</td>
+      </tr>`).join('')}
+    </table></div>`:'';
+
+  // Coach tips
+  const coachTipsHtml=(p.coachTips||[]).filter(t=>t.drillId&&getDrill(t.drillId)).length?`<div style="margin-bottom:18px">
+    <div style="font-size:12px;font-weight:800;color:#7b35c9;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">🎬 Coach Tips — Watch Before Practice</div>
+    ${(p.coachTips||[]).map(tip=>{
+      const d=tip.drillId?getDrill(tip.drillId):null;if(!d)return'';
+      const vid=ytId(d.url);
+      return `<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;border-left:3px solid #c97af5;padding-left:12px">
+        ${vid?`<a href="${d.url}" target="_blank" style="flex-shrink:0"><img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:100px;border-radius:6px;display:block"/></a>`:''}
+        <div>
+          <div style="font-weight:800;font-size:13px;margin-bottom:2px">${esc(d.name)}</div>
+          ${tip.note?`<div style="font-size:11px;color:#555;font-style:italic;margin-bottom:4px">${esc(tip.note)}</div>`:''}
+          <a href="${d.url}" target="_blank" style="font-size:11px;color:#c97af5;font-weight:700">▶ Watch on YouTube</a>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`:'';
+
+  // Checklist
+  const checkHtml=(p.checklist||[]).length?`<div style="margin-bottom:18px">
+    <div style="font-size:12px;font-weight:800;color:#1C2B4A;text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">✅ Coach Reminders</div>
+    ${(p.checklist||[]).map(item=>`<div style="display:flex;gap:8px;align-items:baseline;margin-bottom:6px;font-size:12px">
+      <span style="font-size:15px;color:${item.done?'#2a9d5c':'#ccc'}">${item.done?'☑':'☐'}</span>
+      <span style="${item.done?'text-decoration:line-through;color:#999':''}">${esc(item.text)}</span>
+    </div>`).join('')}
+  </div>`:'';
+
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<title>Coach Sheet: ${esc(p.title||'Practice Plan')}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Helvetica Neue',Arial,sans-serif;padding:16px 20px;max-width:720px;margin:0 auto;color:#1a1a1a;font-size:12px}
+h1{font-size:19px;font-weight:800;margin-bottom:2px}
+.meta{font-size:11px;color:#666;margin-bottom:14px}
+.section-hdr{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:#888;margin:16px 0 8px;padding-bottom:4px;border-bottom:2px solid #eee}
+table{width:100%;border-collapse:collapse}
+@media print{body{padding:8px}button{display:none!important}}
+</style></head>
+<body>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+  <div>
+    <h1>${esc(p.title||'Practice Plan')}</h1>
+    <div class="meta">${p.date}${p.startTime?' · '+fmtTime(p.startTime)+(p.endTime?' – '+fmtTime(p.endTime):''):''} ${tot?' · ~'+tot+' min':''}</div>
+    ${p.notes?`<div style="background:#f7f7f7;border-left:4px solid #f0a500;padding:8px 12px;margin-bottom:12px;font-size:12px;color:#333;line-height:1.6">${esc(p.notes)}</div>`:''}
+  </div>
+  <button onclick="window.print()" style="padding:7px 14px;background:#1C2B4A;color:#fff;border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px;flex-shrink:0;margin-left:16px">🖨 Print</button>
+</div>
+
+${checkHtml}
+
+<div class="section-hdr">⚡ Quick Schedule</div>
+<table style="margin-bottom:16px;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden">
+  <thead><tr style="background:#1C2B4A;color:#fff">
+    <th style="padding:6px 12px;font-size:10px;text-align:left;width:110px">TIME</th>
+    <th style="padding:6px 12px;font-size:10px;text-align:left">ACTIVITY</th>
+    <th style="padding:6px 12px;font-size:10px;text-align:right">COACH</th>
+  </tr></thead>
+  <tbody>${qrows}</tbody>
+</table>
+
+${setupHtml}
+${coachTipsHtml}
+
+<div style="margin-top:16px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:6px;text-align:center">⚡ HAMR Softball Hub — Coach Sheet</div>
+<\/body><\/html>`;
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`CoachSheet_${(p.title||'Plan').replace(/\s+/g,'_')}_${p.date}.html`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
 function dlPlan(id){
   const p=DB.plans.find(x=>x.id===id);if(!p)return;
   const tot=totalMin(p);
@@ -2232,10 +2409,13 @@ function renderLineups(){
       return `<div class="card" style="margin-bottom:10px">
         <div class="row" style="margin-bottom:8px">
           <div class="f1"><div style="font-weight:700;font-size:15px">vs ${esc(g.opponent||'TBD')}</div>
-            <div class="row" style="margin-top:4px;gap:5px">
+            <div class="row" style="margin-top:4px;gap:5px;flex-wrap:wrap">
               <span class="badge" style="background:var(--dim);color:var(--muted)">${g.date}</span>
+              ${g.location?`<span class="badge" style="background:var(--dim);color:var(--muted)">${g.location}</span>`:''}
               <span class="badge" style="background:var(--dim);color:var(--muted)">${g.innings} inn.</span>
-              <span class="badge" style="background:var(--green)22;color:var(--green)">${active.length} players</span>
+              ${g.result?`<span class="badge" style="background:${g.result==='W'?'var(--green)':'var(--red)'}22;color:${g.result==='W'?'var(--green)':'var(--red)'}">
+                ${g.result} ${g.score}-${g.oppScore}</span>`:'<span class="badge" style="background:var(--blue)22;color:var(--blue)">Upcoming</span>'}
+              ${active.length?`<span class="badge" style="background:var(--dim);color:var(--muted)">${active.length} players</span>`:''}
             </div>
           </div>
           <div class="row" style="gap:6px">
@@ -2281,10 +2461,20 @@ function showGameModal(isNew){
   </div>`;
 
   const header=`${mhdr(isNew?'New Game':'Edit Game')}
-    <div class="row" style="gap:8px;margin-bottom:14px">
+    <div class="row" style="gap:8px;margin-bottom:10px;flex-wrap:wrap">
       <div class="f1"><div class="lbl">Opponent</div><input id="g-opp" value="${esc(EG.opponent)}" placeholder="Team name" onchange="EG.opponent=this.value"/></div>
-      <div><div class="lbl">Date</div><input type="date" id="g-date" value="${EG.date}" style="width:155px" onchange="EG.date=this.value"/></div>
-      <div><div class="lbl">Innings</div><select style="width:80px" onchange="EG.innings=parseInt(this.value);showGameModal(${isNew})">${[4,5,6,7].map(n=>`<option value="${n}"${EG.innings===n?' selected':''}>${n}</option>`).join('')}</select></div>
+      <div><div class="lbl">Date</div><input type="date" id="g-date" value="${EG.date}" style="width:150px" onchange="EG.date=this.value"/></div>
+      <div><div class="lbl">Location</div><select id="g-loc" style="width:90px" onchange="EG.location=this.value">
+        <option value="Home"${(EG.location||'Home')==='Home'?' selected':''}>Home</option>
+        <option value="Away"${EG.location==='Away'?' selected':''}>Away</option>
+        <option value="Neutral"${EG.location==='Neutral'?' selected':''}>Neutral</option>
+      </select></div>
+      <div><div class="lbl">Innings</div><select style="width:70px" onchange="EG.innings=parseInt(this.value);showGameModal(${isNew})">${[4,5,6,7].map(n=>`<option value="${n}"${EG.innings===n?' selected':''}>${n}</option>`).join('')}</select></div>
+    </div>
+    <div class="row" style="gap:8px;margin-bottom:14px;align-items:flex-end">
+      <div><div class="lbl">Our Score</div><input type="number" id="g-score" value="${EG.score??''}" placeholder="—" style="width:70px" onchange="updScore('score',this.value)"/></div>
+      <div><div class="lbl">Their Score</div><input type="number" id="g-oppscore" value="${EG.oppScore??''}" placeholder="—" style="width:70px" onchange="updScore('oppScore',this.value)"/></div>
+      <div style="padding-bottom:2px">${EG.score!==undefined&&EG.oppScore!==undefined?`<span class="badge" style="font-size:14px;padding:5px 12px;background:${EG.score>EG.oppScore?'var(--green)22':'var(--red)22'};color:${EG.score>EG.oppScore?'var(--green)':'var(--red)'}">${EG.score>EG.oppScore?'W':'L'} ${EG.score}-${EG.oppScore}</span>`:'<span style="color:var(--muted);font-size:12px">Enter scores above</span>'}</div>
     </div>`;
 
   let body='';
@@ -2625,6 +2815,7 @@ function clearInning(inn){
   showGameModal(false);
 }
 function updGL(pid,f,v){if(EG){const e=EG.lineup.find(x=>x.playerId===pid);if(e)e[f]=v;}}
+function updScore(field,val){if(!EG)return;EG[field]=val===''?undefined:parseInt(val);}
 function setBattingSpot(pid,val){
   if(!EG)return;
   const spot=parseInt(val)||0;
@@ -2918,6 +3109,11 @@ function conflictCheck(inn,pos,excludePid){
 function saveGame(isNew){if(!EG)return;
   EG.opponent=document.getElementById('g-opp')?.value||EG.opponent;
   EG.date=document.getElementById('g-date')?.value||EG.date;
+  EG.location=document.getElementById('g-loc')?.value||EG.location;
+  const sc=parseInt(document.getElementById('g-score')?.value);
+  const osc=parseInt(document.getElementById('g-oppscore')?.value);
+  if(!isNaN(sc))EG.score=sc; if(!isNaN(osc))EG.oppScore=osc;
+  if(EG.score!==undefined&&EG.oppScore!==undefined)EG.result=EG.score>EG.oppScore?'W':EG.score<EG.oppScore?'L':'T';
   // Auto-compute inningsPlayed from grid — only count valid active player IDs
   const activeSavePids=new Set(EG.lineup.filter(e=>!e.outForGame).map(e=>e.playerId));
   if(EG.inningGrid&&Object.keys(EG.inningGrid).length){
