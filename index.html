@@ -3501,12 +3501,15 @@ Keep the tone positive and encouraging — this is a 12U youth team. Be specific
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
+        model:'claude-sonnet-4-5',
         max_tokens:2000,
         messages:[{role:'user',content:prompt}]
       })
     });
     const data=await resp.json();
+    if(!resp.ok){
+      throw new Error(data.error?.message||`API error ${resp.status}: ${JSON.stringify(data)}`);
+    }
     const text=data.content?.[0]?.text||'No response received.';
 
     // Convert markdown to basic HTML (line-by-line, no regex flags)
