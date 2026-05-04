@@ -3413,6 +3413,116 @@ function showPT(){
 }
 
 // ═══ STATS ═══════════════════════════════════════════════
+
+async function analyzeStats(){
+  const all=DB.gcStats||[];
+  if(!all.length){alert('Import stats first.');return;}
+
+  // Build a stats summary to send to Claude
+  const players=DB.players.map(p=>{
+    const rows=all.filter(r=>r._playerId===p.id);
+    if(!rows.length)return null;
+    const r=rows[rows.length-1];
+    const get=k=>r[k]||'—';
+    return {
+      name:p.name, number:p.number,
+      // Batting
+      GP:get('GP'),PA:get('PA'),AB:get('AB'),AVG:get('AVG'),OBP:get('OBP'),SLG:get('SLG'),OPS:get('OPS'),
+      H:get('H'),doubles:get('2B'),triples:get('3B'),HR:get('HR'),RBI:get('RBI'),R:get('R'),
+      BB:get('BB'),SO:get('SO'),SB:get('SB'),QABpct:get('QAB%'),HBP:get('HBP'),
+      // Pitching (prefixed P_)
+      IP:get('P_IP'),ERA:get('P_ERA'),WHIP:get('P_WHIP'),Pw:get('P_W'),Pl:get('P_L'),
+      Pbb:get('P_BB'),Pso:get('P_SO'),
+      // Fielding (prefixed F_)
+      FPCT:get('F_FPCT'),E:get('F_E'),INN:get('F_INN')
+    };
+  }).filter(Boolean);
+
+  if(!players.length){alert('No stats matched to roster players.');return;}
+
+  // Show loading modal
+  showModal(`${mhdr('🤖 AI Stats Analysis')}
+    <div id="ai-analysis-body" style="text-align:center;padding:40px 20px">
+      <div style="font-size:28px;margin-bottom:12px">⚾</div>
+      <div style="color:var(--muted);font-size:14px">Analyzing your team stats...</div>
+      <div style="margin-top:16px;font-size:11px;color:var(--dim)">Claude is reviewing all batting, pitching, and fielding data</div>
+    </div>`,true);
+
+  const prompt=`You are an expert youth softball coach analyst. I'm giving you stats for my 12U girls softball team, the HAMR Hippos. Please provide a detailed, insightful analysis of the team and individual players.
+
+Here are the team stats:
+${JSON.stringify(players,null,2)}
+
+Please structure your response with these sections:
+
+## 🏆 Team Overview
+Assess overall team performance — offensive productivity, pitching stability, fielding reliability.
+
+## ⭐ Standout Performers
+Highlight 3-4 players who are excelling and specifically WHY based on their numbers.
+
+## 📈 Developing Players
+Identify 2-3 players who are improving or show upside — be constructive and encouraging.
+
+## ⚾ Offensive Analysis
+Analyze batting order implications, who gets on base, who drives runs, plate discipline (BB/K), contact rate. Comment on the team's two-wave batting philosophy (1-7 repeated).
+
+## ⚡ Pitching Analysis
+Assess pitching staff depth, ERA, WHIP, control issues, strengths.
+
+## 🧤 Fielding Analysis
+Note fielding percentages, errors, positional versatility (innings at each position).
+
+## 💡 Coaching Recommendations
+Give 4-5 specific, actionable recommendations for practice focus areas based purely on what the data shows.
+
+Keep the tone positive and encouraging — this is a 12U youth team. Be specific with numbers. Use first names only.`;
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:2000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await resp.json();
+    const text=data.content?.[0]?.text||'No response received.';
+
+    // Convert markdown to basic HTML
+    const md2html=t=>t
+      .replace(/^## (.+)$/gm,'<h3 style="color:var(--gold);font-size:14px;font-weight:800;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">$1</h3>')
+      .replace(/^### (.+)$/gm,'<h4 style="color:var(--text);font-size:13px;font-weight:700;margin:12px 0 6px">$1</h4>')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/^- (.+)$/gm,'<li style="margin-bottom:5px;font-size:13px;line-height:1.6">$1</li>')
+      .replace(/(<li[^>]*>.*<\/li>
+?)+/gs,m=>`<ul style="padding-left:18px;margin:6px 0">${m}</ul>`)
+      .replace(/
+
+/g,'</p><p style="font-size:13px;line-height:1.7;margin-bottom:10px">')
+      .replace(/^(?!<[hul])/gm,'<p style="font-size:13px;line-height:1.7;margin-bottom:10px">');
+
+    document.getElementById('ai-analysis-body').innerHTML=`
+      <div style="text-align:left;max-height:60vh;overflow-y:auto;padding-right:8px">
+        ${md2html(text)}
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px">
+        <button class="btn btn-dim f1" onclick="closeModal()">Close</button>
+      </div>`;
+
+  }catch(err){
+    document.getElementById('ai-analysis-body').innerHTML=`
+      <div style="color:var(--red);padding:20px;text-align:center">
+        <div style="font-size:24px;margin-bottom:8px">⚠</div>
+        <div style="font-weight:700">Analysis failed</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:6px">${esc(err.message||'Unknown error')}</div>
+      </div>
+      <button class="btn btn-dim" style="width:100%;margin-top:12px" onclick="closeModal()">Close</button>`;
+  }
+}
+
 let _statTab='batting',_statSort={col:'AVG',dir:-1};
 
 const STAT_COLS={
@@ -3549,7 +3659,8 @@ function renderStats(){
 
   return `<div class="row" style="margin-bottom:14px">
     <h2 class="st">📊 Stats</h2><div class="f1"></div>
-    <button class="btn btn-dim btn-sm" onclick="DB.gcStats=[];scheduleSave();renderTab()">🗑 Clear</button>
+    <button class="btn btn-blue btn-sm" onclick="analyzeStats()">🤖 AI Analysis</button>
+    &nbsp;<button class="btn btn-dim btn-sm" onclick="DB.gcStats=[];scheduleSave();renderTab()">🗑 Clear</button>
     &nbsp;<button class="btn btn-gold" onclick="showStatsImport()">📥 Import CSV</button>
   </div>
   <div class="row" style="gap:6px;margin-bottom:12px">${tabBtns}</div>
