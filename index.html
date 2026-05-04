@@ -3421,141 +3421,55 @@ function showPT(){
 
 // ═══ STATS ═══════════════════════════════════════════════
 
-async function analyzeStats(){
+function exportForClaude(){
   const all=DB.gcStats||[];
   if(!all.length){alert('Import stats first.');return;}
 
-  // Build a stats summary to send to Claude
   const players=DB.players.map(p=>{
     const rows=all.filter(r=>r._playerId===p.id);
     if(!rows.length)return null;
     const r=rows[rows.length-1];
-    const get=k=>r[k]||'—';
-    return {
-      name:p.name, number:p.number,
-      // Batting
-      GP:get('GP'),PA:get('PA'),AB:get('AB'),AVG:get('AVG'),OBP:get('OBP'),SLG:get('SLG'),OPS:get('OPS'),
-      H:get('H'),doubles:get('2B'),triples:get('3B'),HR:get('HR'),RBI:get('RBI'),R:get('R'),
-      BB:get('BB'),SO:get('SO'),SB:get('SB'),QABpct:get('QAB%'),HBP:get('HBP'),
-      // Pitching (prefixed P_)
-      IP:get('P_IP'),ERA:get('P_ERA'),WHIP:get('P_WHIP'),Pw:get('P_W'),Pl:get('P_L'),
-      Pbb:get('P_BB'),Pso:get('P_SO'),
-      // Fielding (prefixed F_)
-      FPCT:get('F_FPCT'),E:get('F_E'),INN:get('F_INN')
-    };
+    const g=k=>{const v=r[k];return(!v||v==='-'||v==='0'||v===0)?null:v;};
+    const lines=[];
+    const bat=[g('GP')&&`${g('GP')} GP`,g('PA')&&`${g('PA')} PA`,g('AB')&&`${g('AB')} AB`,
+      g('AVG')&&`AVG ${g('AVG')}`,g('OBP')&&`OBP ${g('OBP')}`,g('SLG')&&`SLG ${g('SLG')}`,
+      g('OPS')&&`OPS ${g('OPS')}`,g('H')&&`${g('H')} H`,g('2B')&&`${g('2B')} 2B`,
+      g('HR')&&`${g('HR')} HR`,g('RBI')&&`${g('RBI')} RBI`,g('R')&&`${g('R')} R`,
+      g('BB')&&`${g('BB')} BB`,g('SO')&&`${g('SO')} K`,g('SB')&&`${g('SB')} SB`,
+      g('QAB%')&&`${g('QAB%')} QAB%`].filter(Boolean);
+    if(bat.length)lines.push('  Batting: '+bat.join(', '));
+    const pit=[g('P_IP')&&`${g('P_IP')} IP`,g('P_ERA')&&`ERA ${g('P_ERA')}`,
+      g('P_WHIP')&&`WHIP ${g('P_WHIP')}`,g('P_W')&&`${g('P_W')}W`,g('P_L')&&`${g('P_L')}L`,
+      g('P_BB')&&`${g('P_BB')} BB`,g('P_SO')&&`${g('P_SO')} K`].filter(Boolean);
+    if(pit.length)lines.push('  Pitching: '+pit.join(', '));
+    const fld=[g('F_INN')&&`${g('F_INN')} INN`,g('F_FPCT')&&`FPCT ${g('F_FPCT')}`,
+      g('F_E')&&`${g('F_E')} E`].filter(Boolean);
+    if(fld.length)lines.push('  Fielding: '+fld.join(', '));
+    return `#${p.number||'?'} ${p.name}\n${lines.join('\n')}`;
   }).filter(Boolean);
 
-  if(!players.length){alert('No stats matched to roster players.');return;}
+  const prompt=`You are an expert 12U youth softball coach analyst. Analyze these stats for my team, the HAMR Hippos, and provide:\n\n1. TEAM OVERVIEW — overall offensive, pitching, and fielding health\n2. STANDOUT PERFORMERS — 3-4 players excelling and why (with specific numbers)\n3. DEVELOPING PLAYERS — 2-3 players with upside, constructive and encouraging\n4. OFFENSIVE ANALYSIS — plate discipline, who gets on base vs drives runs, batting order suggestions (I think in two waves of 1-7)\n5. PITCHING ANALYSIS — ERA, WHIP, control, staff depth\n6. FIELDING ANALYSIS — fielding %, errors, positional versatility\n7. COACHING RECOMMENDATIONS — 4-5 specific data-driven practice focus areas\n\nKeep tone positive and encouraging. Use first names only. Be specific with numbers.\n\nTEAM STATS:\n${players.join('\n\n')}`;
 
-  // Show loading modal
-  showModal(`${mhdr('🤖 AI Stats Analysis')}
-    <div id="ai-analysis-body" style="text-align:center;padding:40px 20px">
-      <div style="font-size:28px;margin-bottom:12px">⚾</div>
-      <div style="color:var(--muted);font-size:14px">Analyzing your team stats...</div>
-      <div style="margin-top:16px;font-size:11px;color:var(--dim)">Claude is reviewing all batting, pitching, and fielding data</div>
-    </div>`,true);
-
-  const prompt=`You are an expert youth softball coach analyst. I'm giving you stats for my 12U girls softball team, the HAMR Hippos. Please provide a detailed, insightful analysis of the team and individual players.
-
-Here are the team stats:
-${JSON.stringify(players,null,2)}
-
-Please structure your response with these sections:
-
-## 🏆 Team Overview
-Assess overall team performance — offensive productivity, pitching stability, fielding reliability.
-
-## ⭐ Standout Performers
-Highlight 3-4 players who are excelling and specifically WHY based on their numbers.
-
-## 📈 Developing Players
-Identify 2-3 players who are improving or show upside — be constructive and encouraging.
-
-## ⚾ Offensive Analysis
-Analyze batting order implications, who gets on base, who drives runs, plate discipline (BB/K), contact rate. Comment on the team's two-wave batting philosophy (1-7 repeated).
-
-## ⚡ Pitching Analysis
-Assess pitching staff depth, ERA, WHIP, control issues, strengths.
-
-## 🧤 Fielding Analysis
-Note fielding percentages, errors, positional versatility (innings at each position).
-
-## 💡 Coaching Recommendations
-Give 4-5 specific, actionable recommendations for practice focus areas based purely on what the data shows.
-
-Keep the tone positive and encouraging — this is a 12U youth team. Be specific with numbers. Use first names only.`;
-
-  try{
-    const apiKey=DB.anthropicKey||'';
-    if(!apiKey){
-      document.getElementById('ai-analysis-body').innerHTML=`
-        <div style="padding:20px;text-align:center">
-          <div style="font-size:24px;margin-bottom:12px">🔑</div>
-          <div style="font-weight:700;margin-bottom:8px">API Key Required</div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Add your Anthropic API key in Settings → Sync to enable AI analysis.</div>
-          <button class="btn btn-gold" onclick="showSync();closeModal()">Open Settings</button>
-        </div>`;
-      return;
-    }
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':apiKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-5',
-        max_tokens:2000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    const data=await resp.json();
-    if(!resp.ok){
-      throw new Error(data.error?.message||`API error ${resp.status}: ${JSON.stringify(data)}`);
-    }
-    const text=data.content?.[0]?.text||'No response received.';
-
-    // Convert markdown to basic HTML (line-by-line, no regex flags)
-    const md2html=t=>{
-      const lines=t.split('\n');
-      let out='';let inUL=false;
-      const bold=s=>s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
-      lines.forEach(line=>{
-        if(line.startsWith('## ')){
-          if(inUL){out+='</ul>';inUL=false;}
-          out+='<h3 style="color:var(--gold);font-size:14px;font-weight:800;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">'+bold(line.slice(3))+'</h3>';
-        } else if(line.startsWith('### ')){
-          if(inUL){out+='</ul>';inUL=false;}
-          out+='<h4 style="color:var(--text);font-size:13px;font-weight:700;margin:12px 0 6px">'+bold(line.slice(4))+'</h4>';
-        } else if(line.startsWith('- ')){
-          if(!inUL){out+='<ul style="padding-left:18px;margin:6px 0">';inUL=true;}
-          out+='<li style="margin-bottom:5px;font-size:13px;line-height:1.6">'+bold(line.slice(2))+'</li>';
-        } else if(line.trim()===''){
-          if(inUL){out+='</ul>';inUL=false;}
-        } else {
-          if(inUL){out+='</ul>';inUL=false;}
-          out+='<p style="font-size:13px;line-height:1.7;margin-bottom:8px">'+bold(line)+'</p>';
-        }
-      });
-      if(inUL)out+='</ul>';
-      return out;
-    };
-
-    document.getElementById('ai-analysis-body').innerHTML=`
-      <div style="text-align:left;max-height:60vh;overflow-y:auto;padding-right:8px">
-        ${md2html(text)}
+  navigator.clipboard.writeText(prompt).then(()=>{
+    showModal(`${mhdr('🤖 Analyze with Claude')}
+      <div style="text-align:center;padding:20px">
+        <div style="font-size:40px;margin-bottom:12px">✅</div>
+        <div style="font-weight:800;font-size:16px;margin-bottom:8px">Copied to clipboard!</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7">Your full team stats and analysis prompt are ready.<br>Paste into Claude.ai to get your analysis.</div>
+        <a href="https://claude.ai" target="_blank" class="btn btn-gold" style="display:inline-block;text-decoration:none;margin-bottom:12px">Open Claude.ai →</a>
+        <div style="font-size:11px;color:var(--dim)">Paste with ⌘V (Mac) or Ctrl+V (Windows)</div>
       </div>
-      <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-dim f1" onclick="closeModal()">Close</button>
-      </div>`;
-
-  }catch(err){
-    document.getElementById('ai-analysis-body').innerHTML=`
-      <div style="color:var(--red);padding:20px;text-align:center">
-        <div style="font-size:24px;margin-bottom:8px">⚠</div>
-        <div style="font-weight:700">Analysis failed</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:6px">${esc(err.message||'Unknown error')}</div>
-      </div>
-      <button class="btn btn-dim" style="width:100%;margin-top:12px" onclick="closeModal()">Close</button>`;
-  }
+      <button class="btn btn-dim" style="width:100%;margin-top:10px" onclick="closeModal()">Close</button>`,true);
+  }).catch(()=>{
+    showModal(`${mhdr('🤖 Analyze with Claude')}
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Select all and copy (⌘A then ⌘C), then paste into Claude.ai.</div>
+      <textarea style="width:100%;height:200px;font-size:11px;font-family:monospace;resize:vertical" onclick="this.select()">${prompt.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</textarea>
+      <a href="https://claude.ai" target="_blank" class="btn btn-gold" style="display:block;text-align:center;text-decoration:none;margin-top:10px">Open Claude.ai →</a>
+      <button class="btn btn-dim" style="width:100%;margin-top:8px" onclick="closeModal()">Close</button>`,true);
+  });
 }
+
+
 
 let _statTab='batting',_statSort={col:'AVG',dir:-1};
 
@@ -3693,7 +3607,7 @@ function renderStats(){
 
   return `<div class="row" style="margin-bottom:14px">
     <h2 class="st">📊 Stats</h2><div class="f1"></div>
-    <button class="btn btn-blue btn-sm" onclick="analyzeStats()">🤖 AI Analysis</button>
+    <button class="btn btn-blue btn-sm" onclick="exportForClaude()">🤖 Analyze with Claude</button>
     &nbsp;<button class="btn btn-dim btn-sm" onclick="DB.gcStats=[];scheduleSave();renderTab()">🗑 Clear</button>
     &nbsp;<button class="btn btn-gold" onclick="showStatsImport()">📥 Import CSV</button>
   </div>
