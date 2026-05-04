@@ -3330,13 +3330,14 @@ function handleStatsCSV(input){
       <div style="color:var(--green);font-weight:700;margin-bottom:8px">${mapped.length} rows parsed — ${mapped.filter(r=>r._playerId).length} matched to roster</div>
       ${mapped.filter(r=>!r._playerId).length?`<div style="font-size:12px;color:var(--red);margin-bottom:8px">⚠ ${mapped.filter(r=>!r._playerId).length} unmatched — names from file: ${[...new Set(mapped.filter(r=>!r._playerId).map(r=>r._rawName||r['Player Name']||r['Name']||'?'))].join(', ')}</div>`:''}
       <div class="row" style="gap:8px">
-        <button class="btn btn-gold" onclick="confirmStats(${JSON.stringify(mapped).replace(/'/g,'&#39;').replace(/\//g,'&#47;')})">✓ Import</button>
+        <button class="btn btn-gold" onclick="confirmStats()">✓ Import</button>
         <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
       </div>`;
+    window._pendingStats=mapped;
   };
   reader.readAsText(file);input.value='';
 }
-function confirmStats(rows){DB.gcStats=[...(DB.gcStats||[]),...rows];closeModal();scheduleSave();renderTab();}
+function confirmStats(){const rows=window._pendingStats||[];if(!rows.length)return;DB.gcStats=[...(DB.gcStats||[]),...rows];window._pendingStats=null;closeModal();scheduleSave();renderTab();}
 
 // ═══ INIT ═════════════════════════════════════════════════
 // ═══ DAD JOKES ══════════════════════════════════════════
