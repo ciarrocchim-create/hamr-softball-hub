@@ -398,22 +398,51 @@ function getPlayer(id){return DB.players.find(p=>p.id===id);}
 function parseCSV(text){
   const lines=text.trim().split(/\r?\n/).filter(l=>l.trim());
   if(lines.length<2)return[];
-  // Detect tab vs comma delimiter
   const delim=lines[0].includes('\t')?'\t':',';
-  // GC stats CSVs have 2 header rows: row[0]=Batting/Pitching/Fielding, row[1]=Number/Last/First/...
-  // Detect by checking if second row has 'Last' or 'First'
-  let hdrIdx=0;
-  if(lines.length>1){
-    const secondRow=lines[1].split(delim).map(h=>h.replace(/"/g,'').trim());
-    if(secondRow.includes('Last')||secondRow.includes('First')||secondRow.includes('Number')){
-      hdrIdx=1;
-    }
+
+  // GC stats CSVs have 2 header rows:
+  // Row 0: category labels (Batting, Pitching, Fielding) — sparse, most cells blank
+  // Row 1: actual column names (Number, Last, First, GP, PA, ...)
+  // Detect by checking if row[1] has 'Last' or 'First'
+  const row0=lines[0].split(delim).map(h=>h.replace(/"/g,'').trim());
+  const row1=lines[1]?lines[1].split(delim).map(h=>h.replace(/"/g,'').trim()):[];
+
+  if(row1.includes('Last')||row1.includes('First')||row1.includes('Number')){
+    // Two-header GC format — prefix duplicate cols by section
+    // Find section boundaries from row0
+    let curSection='';
+    const prefixMap={};// index → prefix
+    row0.forEach((cell,i)=>{
+      if(cell==='Batting')curSection='';
+      else if(cell==='Pitching')curSection='P_';
+      else if(cell==='Fielding')curSection='F_';
+      if(curSection)prefixMap[i]=curSection;
+    });
+
+    // Build final headers: prefix cols in Pitching/Fielding sections
+    // Track seen names to detect duplicates
+    const seen={};
+    const hdrs=row1.map((h,i)=>{
+      const prefix=prefixMap[i]||'';
+      const name=prefix+h;
+      // handle duplicates within same section (rare)
+      if(seen[name]){seen[name]++;return name+'_'+seen[name];}
+      seen[name]=1;return name;
+    });
+
+    const dataLines=lines.slice(2).filter(l=>l.trim());
+    return dataLines.map(line=>{
+      const vals=line.split(delim).map(v=>v.replace(/^"|"$/g,'').trim());
+      const obj={};hdrs.forEach((h,i)=>obj[h]=(vals[i]||''));return obj;
+    }).filter(obj=>(obj['Last']||obj['First'])&&obj['Last']!=='Totals'&&!obj['Last']?.startsWith('Glossary'));
   }
-  const hdrs=lines[hdrIdx].split(delim).map(h=>h.replace(/"/g,'').trim());
-  return lines.slice(hdrIdx+1).filter(l=>l.trim()).map(line=>{
+
+  // Standard single-header CSV
+  const hdrs=lines[0].split(delim).map(h=>h.replace(/"/g,'').trim());
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
     const vals=line.split(delim).map(v=>v.replace(/^"|"$/g,'').trim());
     const obj={};hdrs.forEach((h,i)=>obj[h]=(vals[i]||''));return obj;
-  }).filter(obj=>obj['Last']||obj['First']||obj['Player Name']||obj['Name']); // skip Totals/Glossary rows
+  }).filter(obj=>obj['Last']||obj['First']||obj['Player Name']||obj['Name']);
 }
 
 // ═══ GOOGLE SHEETS ══════════════════════════════════════
@@ -3263,15 +3292,19 @@ const STAT_COLS={
   },
   pitching:{
     label:'⚡ Pitching',
-    cols:['GP','GS','IP','W','L','ERA','WHIP','BF','H','R','ER','BB','SO','SB%','S%','FPS%'],
-    pct:['ERA','WHIP','S%','FPS%','SB%'],
-    defaultSort:'ERA'
+    // Pitching cols are prefixed P_ to avoid collision with batting cols
+    cols:['P_GP','P_GS','P_IP','P_W','P_L','P_ERA','P_WHIP','P_BF','P_H','P_R','P_ER','P_BB','P_SO','P_S%','P_FPS%'],
+    pct:['P_ERA','P_WHIP','P_S%','P_FPS%'],
+    defaultSort:'P_ERA',
+    labels:{'P_GP':'GP','P_GS':'GS','P_IP':'IP','P_W':'W','P_L':'L','P_ERA':'ERA','P_WHIP':'WHIP','P_BF':'BF','P_H':'H','P_R':'R','P_ER':'ER','P_BB':'BB','P_SO':'SO','P_S%':'S%','P_FPS%':'FPS%'}
   },
   fielding:{
     label:'🧤 Fielding',
-    cols:['INN','TC','PO','A','E','FPCT','DP','P','C','1B','2B','3B','SS','LF','CF','RF'],
-    pct:['FPCT'],
-    defaultSort:'INN'
+    // Fielding cols are prefixed F_
+    cols:['F_INN','F_TC','F_PO','F_A','F_E','F_FPCT','F_DP','F_P','F_C','F_1B','F_2B','F_3B','F_SS','F_LF','F_CF','F_RF'],
+    pct:['F_FPCT'],
+    defaultSort:'F_INN',
+    labels:{'F_INN':'INN','F_TC':'TC','F_PO':'PO','F_A':'A','F_E':'E','F_FPCT':'FPCT','F_DP':'DP','F_P':'P','F_C':'C','F_1B':'1B','F_2B':'2B','F_3B':'3B','F_SS':'SS','F_LF':'LF','F_CF':'CF','F_RF':'RF'}
   }
 };
 
@@ -3353,7 +3386,13 @@ function renderStats(){
       user-select:none`;
   };
 
-  const headers=cols.map(col=>`<th style="${thStyle(col)}" onclick="setStatSort('${col}')">${col}${_statSort.col===col?(_statSort.dir>0?' ▲':' ▼'):''}</th>`).join('');
+  const headers=cols.map(col=>{
+    const label=cfg.labels?.[col]||col;
+    const active=_statSort.col===col;
+    const isPct=pctCols.includes(col);
+    const style=`padding:6px 6px;font-size:10px;text-align:center;cursor:pointer;white-space:nowrap;color:${active?'var(--gold)':isPct?'var(--gold)':'var(--muted)'};background:${active?'var(--gold)11':'transparent'};user-select:none`;
+    return `<th style="${style}" onclick="setStatSort('${col}')">${label}${_statSort.col===col?(_statSort.dir>0?' ▲':' ▼'):''}</th>`;
+  }).join('');
 
   const rows=players.map((p,i)=>{
     const cells=cols.map(col=>{
