@@ -3252,30 +3252,146 @@ function showPT(){
 }
 
 // ═══ STATS ═══════════════════════════════════════════════
+let _statTab='batting',_statSort={col:'AVG',dir:-1};
+
+const STAT_COLS={
+  batting:{
+    label:'⚾ Batting',
+    cols:['GP','PA','AB','AVG','OBP','SLG','OPS','H','1B','2B','3B','HR','RBI','R','BB','SO','SB','QAB%'],
+    pct:['AVG','OBP','SLG','OPS','QAB%'],
+    defaultSort:'AVG'
+  },
+  pitching:{
+    label:'⚡ Pitching',
+    cols:['GP','GS','IP','W','L','ERA','WHIP','BF','H','R','ER','BB','SO','SB%','S%','FPS%'],
+    pct:['ERA','WHIP','S%','FPS%','SB%'],
+    defaultSort:'ERA'
+  },
+  fielding:{
+    label:'🧤 Fielding',
+    cols:['INN','TC','PO','A','E','FPCT','DP','P','C','1B','2B','3B','SS','LF','CF','RF'],
+    pct:['FPCT'],
+    defaultSort:'INN'
+  }
+};
+
+function setStatTab(tab){
+  _statTab=tab;
+  const def=STAT_COLS[tab].defaultSort;
+  _statSort={col:def,dir:-1};
+  renderTab();
+}
+function setStatSort(col){
+  if(_statSort.col===col)_statSort.dir*=-1;
+  else{_statSort={col,dir:-1};}
+  renderTab();
+}
+
+function fmtStat(val,col,pctCols){
+  if(val===undefined||val===null||val===''||val==='-')return'—';
+  const n=parseFloat(val);
+  if(isNaN(n))return val;
+  if(pctCols.includes(col)){
+    // Rate stats: keep as-is (already formatted by GC)
+    return val;
+  }
+  // Whole number: strip .0
+  if(Number.isInteger(n)||String(val).match(/^\d+\.0+$/))return String(Math.round(n));
+  return val;
+}
+
 function renderStats(){
   const all=DB.gcStats||[];
-  const cols=all.length?Object.keys(all[0]).filter(k=>!k.startsWith('_')):[];
-  const KEY=['AB','R','H','2B','3B','HR','RBI','BB','K','SB','AVG','OBP','SLG','OPS'];
-  const disp=KEY.filter(k=>cols.includes(k)).length?KEY.filter(k=>cols.includes(k)):cols.slice(0,10);
-  const isKey=k=>['AVG','OBP','SLG','OPS'].includes(k);
-  const groups=DB.players.map(p=>({p,rows:all.filter(r=>r._playerId===p.id)})).filter(x=>x.rows.length>0);
+  if(all.length===0){
+    return `<div class="row" style="margin-bottom:18px"><h2 class="st">📊 Stats</h2><div class="f1"></div>
+      <button class="btn btn-gold" onclick="showStatsImport()">📥 Import GameChanger CSV</button>
+    </div>
+    <div class="empty">No stats imported yet. Export from GameChanger and import the CSV.</div>`;
+  }
+
+  const cfg=STAT_COLS[_statTab];
+  const avail=all.length?Object.keys(all[0]).filter(k=>!k.startsWith('_')):[];
+  const cols=cfg.cols.filter(k=>avail.includes(k));
+  const pctCols=cfg.pct;
+
+  // Aggregate rows per player (sum integers, average rate stats)
+  const players=DB.players.map(p=>{
+    const rows=all.filter(r=>r._playerId===p.id);
+    if(!rows.length)return null;
+    const agg={_name:p.name,_number:p.number,_pid:p.id};
+    cols.forEach(col=>{
+      const vals=rows.map(r=>r[col]).filter(v=>v&&v!=='-'&&v!=='');
+      if(!vals.length){agg[col]='—';return;}
+      if(pctCols.includes(col)){
+        // Use last import value for rate stats
+        agg[col]=vals[vals.length-1];
+      } else {
+        const nums=vals.map(v=>parseFloat(v)).filter(v=>!isNaN(v));
+        agg[col]=nums.length?nums.reduce((a,b)=>a+b,0):vals[0];
+      }
+    });
+    return agg;
+  }).filter(Boolean);
+
+  // Sort
+  const sc=_statSort.col,sd=_statSort.dir;
+  players.sort((a,b)=>{
+    const av=a[sc],bv=b[sc];
+    if(av==='—'&&bv==='—')return 0;
+    if(av==='—')return 1;if(bv==='—')return -1;
+    const an=parseFloat(av),bn=parseFloat(bv);
+    if(!isNaN(an)&&!isNaN(bn))return(an-bn)*sd;
+    return String(av).localeCompare(String(bv))*sd;
+  });
+
+  const thStyle=(col)=>{
+    const active=_statSort.col===col;
+    const isPct=pctCols.includes(col);
+    return `padding:6px 6px;font-size:10px;text-align:center;cursor:pointer;white-space:nowrap;
+      color:${active?'var(--gold)':isPct?'var(--gold)':'var(--muted)'};
+      background:${active?'var(--gold)11':'transparent'};
+      user-select:none`;
+  };
+
+  const headers=cols.map(col=>`<th style="${thStyle(col)}" onclick="setStatSort('${col}')">${col}${_statSort.col===col?(_statSort.dir>0?' ▲':' ▼'):''}</th>`).join('');
+
+  const rows=players.map((p,i)=>{
+    const cells=cols.map(col=>{
+      const v=p[col];
+      const isPct=pctCols.includes(col);
+      const display=fmtStat(v,col,pctCols);
+      const isActive=_statSort.col===col;
+      return `<td style="text-align:center;padding:5px 6px;font-weight:${isPct?700:400};color:${isPct?'var(--gold)':'var(--text)'};background:${isActive?'var(--gold)08':'transparent'}">${display}</td>`;
+    }).join('');
+    const bg=i%2===0?'var(--surface)':'transparent';
+    return `<tr style="background:${bg}">
+      <td style="padding:5px 10px;font-weight:700;white-space:nowrap">#${esc(p._number||'—')} ${esc(p._name)}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  const tabBtns=Object.entries(STAT_COLS).map(([key,{label}])=>
+    `<button class="tog${_statTab===key?' on':''}" onclick="setStatTab('${key}')">${label}</button>`
+  ).join('');
+
   const unmatched=all.filter(r=>!r._playerId);
-  const tables=groups.map(({p,rows})=>`<div class="card" style="margin-bottom:14px">
-    <div style="font-weight:700;font-size:14px;margin-bottom:10px">#${esc(p.number||'—')} ${esc(p.name)}</div>
-    <div style="overflow-x:auto"><table>
-      <thead><tr><th>Label</th><th>Date</th>${disp.map(k=>`<th style="color:${isKey(k)?'var(--gold)':'var(--muted)'}">${k}</th>`).join('')}</tr></thead>
-      <tbody>${rows.map(r=>`<tr><td style="color:var(--muted);white-space:nowrap">${esc(r._label||'')}</td><td style="color:var(--muted);white-space:nowrap">${esc(r._date||'')}</td>${disp.map(k=>`<td style="text-align:center;font-weight:${isKey(k)?700:400};color:${isKey(k)?'var(--gold)':'var(--text)'}">${r[k]||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table></div>
-  </div>`).join('');
-  return `<div class="row" style="margin-bottom:18px"><h2 class="st">📊 Stats</h2><div class="f1"></div>
-    <button class="btn btn-gold" onclick="showStatsImport()">📥 Import GameChanger CSV</button>
+
+  return `<div class="row" style="margin-bottom:14px">
+    <h2 class="st">📊 Stats</h2><div class="f1"></div>
+    <button class="btn btn-dim btn-sm" onclick="DB.gcStats=[];scheduleSave();renderTab()">🗑 Clear</button>
+    &nbsp;<button class="btn btn-gold" onclick="showStatsImport()">📥 Import CSV</button>
   </div>
-  ${all.length===0?'<div class="empty">No stats imported yet. Export from GameChanger and import the CSV.</div>':''}
-  ${tables}
-  ${unmatched.length?`<div class="card"><div style="font-weight:700;margin-bottom:8px;color:var(--muted)">⚠ ${unmatched.length} rows not matched to a roster player</div>
-    <div style="overflow-x:auto"><table><thead><tr><th>Name</th>${disp.map(k=>`<th>${k}</th>`).join('')}</tr></thead>
-    <tbody>${unmatched.map(r=>`<tr><td style="font-weight:600">${esc(r['Player Name']||r['Name']||'?')}</td>${disp.map(k=>`<td style="text-align:center">${r[k]||'—'}</td>`).join('')}</tr>`).join('')}</tbody>
-    </table></div></div>`:''}`;
+  <div class="row" style="gap:6px;margin-bottom:12px">${tabBtns}</div>
+  <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Click any column header to sort. Gold = rate stats.</div>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
+    <thead><tr>
+      <th style="text-align:left;padding:6px 10px;font-size:10px;color:var(--muted);cursor:pointer" onclick="setStatSort('_name')">Player</th>
+      ${headers}
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>
+  ${unmatched.length?`<div class="card" style="margin-top:16px"><div style="font-weight:700;color:var(--muted);margin-bottom:6px">⚠ ${unmatched.length} rows not matched to roster</div>
+    <div style="font-size:12px;color:var(--muted)">${[...new Set(unmatched.map(r=>r._rawName||'?'))].join(', ')}</div></div>`:''}`;
 }
 function showStatsImport(){
   showModal(`${mhdr('📥 Import GameChanger Stats CSV')}
