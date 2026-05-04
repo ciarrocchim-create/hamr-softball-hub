@@ -3491,18 +3491,31 @@ Keep the tone positive and encouraging — this is a 12U youth team. Be specific
     const data=await resp.json();
     const text=data.content?.[0]?.text||'No response received.';
 
-    // Convert markdown to basic HTML
-    const md2html=t=>t
-      .replace(/^## (.+)$/gm,'<h3 style="color:var(--gold);font-size:14px;font-weight:800;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">$1</h3>')
-      .replace(/^### (.+)$/gm,'<h4 style="color:var(--text);font-size:13px;font-weight:700;margin:12px 0 6px">$1</h4>')
-      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-      .replace(/^- (.+)$/gm,'<li style="margin-bottom:5px;font-size:13px;line-height:1.6">$1</li>')
-      .replace(/(<li[^>]*>.*<\/li>
-?)+/gs,m=>`<ul style="padding-left:18px;margin:6px 0">${m}</ul>`)
-      .replace(/
-
-/g,'</p><p style="font-size:13px;line-height:1.7;margin-bottom:10px">')
-      .replace(/^(?!<[hul])/gm,'<p style="font-size:13px;line-height:1.7;margin-bottom:10px">');
+    // Convert markdown to basic HTML (line-by-line, no regex flags)
+    const md2html=t=>{
+      const lines=t.split('\n');
+      let out='';let inUL=false;
+      const bold=s=>s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+      lines.forEach(line=>{
+        if(line.startsWith('## ')){
+          if(inUL){out+='</ul>';inUL=false;}
+          out+='<h3 style="color:var(--gold);font-size:14px;font-weight:800;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--border)">'+bold(line.slice(3))+'</h3>';
+        } else if(line.startsWith('### ')){
+          if(inUL){out+='</ul>';inUL=false;}
+          out+='<h4 style="color:var(--text);font-size:13px;font-weight:700;margin:12px 0 6px">'+bold(line.slice(4))+'</h4>';
+        } else if(line.startsWith('- ')){
+          if(!inUL){out+='<ul style="padding-left:18px;margin:6px 0">';inUL=true;}
+          out+='<li style="margin-bottom:5px;font-size:13px;line-height:1.6">'+bold(line.slice(2))+'</li>';
+        } else if(line.trim()===''){
+          if(inUL){out+='</ul>';inUL=false;}
+        } else {
+          if(inUL){out+='</ul>';inUL=false;}
+          out+='<p style="font-size:13px;line-height:1.7;margin-bottom:8px">'+bold(line)+'</p>';
+        }
+      });
+      if(inUL)out+='</ul>';
+      return out;
+    };
 
     document.getElementById('ai-analysis-body').innerHTML=`
       <div style="text-align:left;max-height:60vh;overflow-y:auto;padding-right:8px">
