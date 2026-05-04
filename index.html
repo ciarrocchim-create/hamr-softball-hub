@@ -2575,6 +2575,7 @@ function showGameModal(isNew){
     body=`<div class="row" style="margin-bottom:10px;gap:8px;flex-wrap:wrap">
       <div style="font-size:11px;color:var(--muted)">⠿ Drag to reorder. Numbers update automatically.</div>
       <div class="f1"></div>
+      <button class="btn btn-blue btn-sm" onclick="suggestLineup()">💡 Suggest Lineup</button>
       <button class="btn btn-dim btn-sm" onclick="fixRenumber()">🔧 Fix &amp; Renumber</button>
     </div>
     <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">
@@ -2882,6 +2883,137 @@ function setBattingSpot(pid,val){
 // ── Batting order drag and drop ──────────────────────────
 let _boDrag=null;
 
+
+function suggestLineup(){
+  if(!EG)return;
+
+  // Get active (non-out) players
+  const active=EG.lineup.filter(e=>!e.outForGame).map(e=>getPlayer(e.playerId)).filter(Boolean);
+  if(active.length<2){alert('Add players to the lineup first.');return;}
+
+  // Pull latest stats per player
+  const stats=DB.gcStats||[];
+  const getPlayerStats=pid=>{
+    const rows=stats.filter(r=>r._playerId===pid);
+    if(!rows.length)return null;
+    // Use last import row
+    const r=rows[rows.length-1];
+    const parse=k=>parseFloat(r[k])||0;
+    return{
+      obp:parse('OBP'),avg:parse('AVG'),slg:parse('SLG'),ops:parse('OPS'),
+      sb:parse('SB'),pa:parse('PA'),ab:parse('AB'),hr:parse('HR'),rbi:parse('RBI'),
+      k:parse('SO'),bb:parse('BB'),h:parse('H')
+    };
+  };
+
+  // Score each player for each batting slot role
+  // Slot roles (both waves follow same pattern):
+  // 1: Speed/OBP leadoff
+  // 2: Contact/OBP table-setter
+  // 3: Best hitter overall
+  // 4: Power/RBI
+  // 5: Second power
+  // 6: Good contact
+  // 7: OBP/speed bottom
+  const roleScore=(s,slot)=>{
+    if(!s)return 0;
+    const pa=Math.max(s.pa,1);
+    const kPct=s.k/pa;
+    const bbPct=s.bb/pa;
+    const sbRate=s.sb/Math.max(s.ab,1);
+    switch(slot){
+      case 1:return s.obp*3+sbRate*2+s.avg-kPct;
+      case 2:return s.obp*2.5+s.avg*2+bbPct-kPct*0.5;
+      case 3:return s.ops*2+s.avg*1.5+s.rbi*0.1;
+      case 4:return s.slg*2+s.hr*0.5+s.rbi*0.15+s.ops;
+      case 5:return s.slg*1.5+s.ops+s.rbi*0.1+s.hr*0.3;
+      case 6:return s.avg*2+s.obp+s.h*0.05-kPct*0.5;
+      case 7:return s.obp*2+sbRate+s.avg-kPct*0.5;
+      default:return s.ops;
+    }
+  };
+
+  // Build player list with stats
+  const pool=active.map(p=>({p,s:getPlayerStats(p.id)}));
+  const hasStats=pool.some(x=>x.s);
+
+  // Hungarian-style greedy assignment — fill slots 1-7 twice (two waves)
+  const totalSlots=Math.min(active.length,14);
+  const wave1Count=Math.ceil(totalSlots/2);
+  const wave2Count=Math.floor(totalSlots/2);
+  const assigned=[];
+  const used=new Set();
+
+  const fillWave=(waveLen,startSlot)=>{
+    const wave=[];
+    for(let i=0;i<waveLen;i++){
+      const slot=((i%7)+1); // 1-7
+      let best=null,bestScore=-Infinity;
+      pool.forEach(({p,s})=>{
+        if(used.has(p.id))return;
+        const score=hasStats?roleScore(s,slot):Math.random();
+        if(score>bestScore){bestScore=score;best=p;}
+      });
+      if(best){used.add(best.id);wave.push({p:best,slot:startSlot+i,waveSlot:slot});}
+    }
+    return wave;
+  };
+
+  const wave1=fillWave(wave1Count,1);
+  const wave2=fillWave(wave2Count,wave1Count+1);
+  const allSlots=[...wave1,...wave2];
+
+  // Bench players (not in lineup due to sitting, but show who's not included)
+  const benchPlayers=EG.lineup.filter(e=>e.outForGame).map(e=>getPlayer(e.playerId)).filter(Boolean);
+
+  // Build display
+  const waveCard=(wave,label,color)=>`
+    <div style="flex:1;min-width:220px">
+      <div style="font-weight:800;font-size:12px;color:${color};text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;padding:4px 10px;background:${color}18;border-radius:6px">${label}</div>
+      ${wave.map(({p,slot,waveSlot,s})=>{
+        const ps=getPlayerStats(p.id);
+        const statsLine=ps?`<span style="color:var(--muted);font-size:10px">.${String(Math.round(ps.avg*1000)).padStart(3,'0')} OBP .${String(Math.round(ps.obp*1000)).padStart(3,'0')} SLG .${String(Math.round(ps.slg*1000)).padStart(3,'0')}</span>`
+          :`<span style="color:var(--dim);font-size:10px">no stats</span>`;
+        const roles=['','Leadoff','Table-setter','Best bat','Power','Power 2','Contact','Speed/OBP'];
+        return `<div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;margin-bottom:5px;background:var(--surface);border:1px solid var(--border)">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;color:${color};min-width:24px;text-align:center">${waveSlot}</span>
+          <div class="f1">
+            <div style="font-weight:700;font-size:13px">${esc(p.name.split(' ')[0])} <span style="color:var(--muted);font-size:10px">#${esc(p.number||'')}</span></div>
+            ${statsLine}
+          </div>
+          <span style="font-size:9px;color:var(--muted);font-style:italic">${roles[waveSlot]||''}</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+
+  const noStatsNote=!hasStats?`<div style="background:var(--gold)18;border:1px solid var(--gold)44;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--gold);margin-bottom:12px">⚠ No stats imported — order is random. Import a GameChanger CSV for stat-based suggestions.</div>`:'';
+
+  showModal(`${mhdr('💡 Suggested Lineup')}
+    ${noStatsNote}
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Two waves of 1–7. Best fit for each slot based on OBP, SLG, speed, and contact rate.</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      ${waveCard(wave1,'🔵 Wave 1 — Spots 1–${wave1Count}','var(--blue)')}
+      ${wave2.length?waveCard(wave2,'🟠 Wave 2 — Spots ${wave1Count+1}–${totalSlots}','var(--gold)'):''}
+    </div>
+    ${benchPlayers.length?`<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Out this game: ${benchPlayers.map(p=>esc(p.name.split(' ')[0])).join(', ')}</div>`:''}
+    <div class="row" style="gap:8px">
+      <button class="btn btn-gold" onclick="applyLineupSuggestion(${JSON.stringify(allSlots.map(x=>({pid:x.p.id,spot:x.slot})))})">✓ Apply to Lineup</button>
+      <button class="btn btn-dim" onclick="showGameModal(false)">✕ Cancel</button>
+    </div>`,true);
+}
+
+function applyLineupSuggestion(slots){
+  if(!EG)return;
+  // Reset all spots first
+  EG.lineup.forEach(e=>e.battingSpot=0);
+  // Apply suggested spots
+  slots.forEach(({pid,spot})=>{
+    const e=EG.lineup.find(x=>x.playerId===pid);
+    if(e)e.battingSpot=spot;
+  });
+  _gTab='lineup';
+  showGameModal(false);
+}
 function fixRenumber(){
   if(!EG)return;
   // Save old spot→playerId map before renumbering
