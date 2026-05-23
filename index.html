@@ -586,6 +586,23 @@ function importBackup(input){
 }
 
 // ═══ SETTINGS ════════════════════════════════════════════
+
+function exportDrills(){
+  const custom=DB.drills.filter(d=>!d.id.startsWith('seed_'));
+  const all=DB.drills;
+  const blob=new Blob([JSON.stringify(all,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='hamr_drills.json';
+  document.body.appendChild(a);a.click();
+  document.body.removeChild(a);URL.revokeObjectURL(url);
+  showModal(mhdr('📤 Drills Exported')+`<div style="text-align:center;padding:20px">
+    <div style="font-size:40px;margin-bottom:12px">✅</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:8px">hamr_drills.json downloaded!</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:20px">${all.length} drills exported (${custom.length} custom + ${all.length-custom.length} built-in).<br/>Open the Tri City hub → Settings → Import Drills.</div>
+    <button class="btn btn-dim" onclick="closeModal()">Done</button>
+  </div>`);
+}
 function showSettings(){
   showModal(`${mhdr('⚙ Settings')}
     <div class="col">
@@ -605,6 +622,7 @@ function showSettings(){
       <div class="row" style="flex-wrap:wrap;gap:8px">
         <button class="btn btn-green btn-sm" onclick="exportBackup()">💾 Backup Data</button>
         <label class="btn btn-dim btn-sm">📂 Restore Backup<input type="file" accept=".json" class="hidden" onchange="importBackup(this)"></label>
+        <button class="btn btn-blue btn-sm" onclick="exportDrills()">📤 Export Drills</button>
         <button class="btn btn-red btn-sm" onclick="if(confirm('Disconnect and reload?')){localStorage.removeItem('${GIST_ID_KEY}');localStorage.removeItem('${GH_TOKEN_KEY}');location.reload();}">Disconnect</button>
       </div>
       <button class="btn btn-gold" onclick="closeModal()">Done</button>
@@ -3303,8 +3321,8 @@ function saveGame(isNew){if(!EG)return;
   const osc=parseInt(document.getElementById('g-oppscore')?.value);
   if(!isNaN(sc))EG.score=sc; if(!isNaN(osc))EG.oppScore=osc;
   if(EG.score!==undefined&&EG.oppScore!==undefined)EG.result=EG.score>EG.oppScore?'W':EG.score<EG.oppScore?'L':'T';
-  EG.played=document.getElementById('g-played')?.checked||EG.played||false;
-  if(EG.result)EG.played=true; // auto-mark played if result is set
+  const _playedEl=document.getElementById('g-played');
+  if(_playedEl)EG.played=_playedEl.checked;
   // Auto-compute inningsPlayed from grid — only count valid active player IDs
   const activeSavePids=new Set(EG.lineup.filter(e=>!e.outForGame).map(e=>e.playerId));
   if(EG.inningGrid&&Object.keys(EG.inningGrid).length){
