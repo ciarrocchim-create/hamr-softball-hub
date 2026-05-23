@@ -495,25 +495,30 @@ async function gistLoad(gid,token){
   return merged;
 }
 async function gistSave(gid,token,data){
+  const payload=JSON.stringify(data);
+  const kb=Math.round(payload.length/1024);
   const r=await fetch(`https://api.github.com/gists/${gid}`,{
     method:'PATCH',
     headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
-    body:JSON.stringify({files:{'hamr_hub.json':{content:JSON.stringify(data)}}})
+    body:JSON.stringify({files:{'hamr_hub.json':{content:payload}}})
   });
-  if(!r.ok)throw new Error('HTTP '+r.status);
+  if(!r.ok){
+    const body=await r.json().catch(()=>({}));
+    throw new Error(`HTTP ${r.status}: ${body.message||'Unknown error'} (data size: ${kb}KB)`);
+  }
 }
 function setSave(s){
   const el=document.getElementById('save-status');if(!el)return;
   if(s==='saving'){el.textContent='Saving…';el.style.color='var(--muted)';}
   else if(s==='saved'){el.textContent='✓ Saved';el.style.color='var(--green)';}
-  else if(s==='err'){el.textContent='⚠ Save error';el.style.color='var(--red)';}
+  else if(s==='err'||s?.startsWith('err:')){el.textContent=s?.startsWith('err:')?'⚠ '+s.slice(4):'⚠ Save error';el.style.color='var(--red)';el.title=s;}
   else el.textContent='';
 }
 function scheduleSave(){
   clearTimeout(saveTimer);setSave('saving');
   saveTimer=setTimeout(async()=>{
     try{await gistSave(gistId,ghToken,DB);setSave('saved');setTimeout(()=>setSave(''),2500);}
-    catch(e){setSave('err');console.error('Save failed:',e);}
+    catch(e){setSave('err:'+e.message);console.error('Save failed:',e.message);}
   },800);
 }
 async function doRefresh(){
