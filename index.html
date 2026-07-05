@@ -190,6 +190,7 @@ canvas{display:block;width:100%!important}
     <button data-tab="dev" onclick="goTab(this)">📈 Development</button>
     <button data-tab="lineups" onclick="goTab(this)">⚾ Lineups</button>
     <button data-tab="stats" onclick="goTab(this)">📊 Stats</button>
+    <button data-tab="velocity" onclick="goTab(this)">⚡ Velocity</button>
     <button data-tab="jokes" onclick="goTab(this)">😄 Dad Jokes</button>
   </div>
 
@@ -204,6 +205,7 @@ canvas{display:block;width:100%!important}
       <button data-tab="dev" onclick="goTab(this)"><span class="ico">📈</span>Dev</button>
       <button data-tab="lineups" onclick="goTab(this)"><span class="ico">⚾</span>Lineups</button>
       <button data-tab="stats" onclick="goTab(this)"><span class="ico">📊</span>Stats</button>
+      <button data-tab="velocity" onclick="goTab(this)"><span class="ico">⚡</span>Velocity</button>
       <button data-tab="jokes" onclick="goTab(this)"><span class="ico">😄</span>Jokes</button>
     </div>
   </div>
@@ -378,7 +380,7 @@ const SEED_GAMES=[
   {opponent:'Norwich',date:'2026-06-06',location:'Away',innings:6},
   {opponent:'CLL',date:'2026-06-13',location:'Home',innings:6},
 ];
-const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[],jokes:[]};
+const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[],velocitySessions:[],jokes:[]};
 
 // ═══ STATE ══════════════════════════════════════════════
 let gistId=localStorage.getItem(GIST_ID_KEY)||'';
@@ -559,6 +561,7 @@ function renderTab(){
   else if(currentTab==='dev'){renderDev();return;}
   else if(currentTab==='lineups')el.innerHTML=renderLineups();
   else if(currentTab==='stats')el.innerHTML=renderStats();
+  else if(currentTab==='velocity')el.innerHTML=renderVelocity();
   else if(currentTab==='jokes')el.innerHTML=renderJokes();
 }
 
@@ -566,7 +569,7 @@ function renderTab(){
 function exportBackup(){
   const b={_v:2,_label:'HAMR Softball Hub Backup',_date:new Date().toISOString(),
     players:DB.players,plans:DB.plans,metrics:DB.metrics,games:DB.games,
-    gcStats:DB.gcStats,playerSkills:DB.playerSkills||[]};
+    gcStats:DB.gcStats,playerSkills:DB.playerSkills||[],velocitySessions:DB.velocitySessions||[]};
   const blob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;
@@ -582,7 +585,7 @@ function importBackup(input){
       if(b._label!=='HAMR Softball Hub Backup')throw new Error('Not a valid backup');
       Object.assign(DB,{players:b.players||DB.players,plans:b.plans||DB.plans,
         metrics:b.metrics||DB.metrics,games:b.games||DB.games,
-        gcStats:b.gcStats||DB.gcStats,playerSkills:b.playerSkills||[]});
+        gcStats:b.gcStats||DB.gcStats,playerSkills:b.playerSkills||[],velocitySessions:b.velocitySessions||[]});
       scheduleSave();renderTab();updateCounts();closeModal();
       setSave('saved');setTimeout(()=>setSave(''),2000);
     }catch(e){alert('Could not restore: '+e.message);}
@@ -837,6 +840,205 @@ function handleRosterCSV(input){
 function confirmCSV(players){
   DB.players=[...DB.players,...players];closeModal();scheduleSave();renderTab();updateCounts();
 }
+
+// ═══ VELOCITY ════════════════════════════════════════════
+function importVelocityCSV(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const lines=ev.target.result.trim().split(/\r?\n/);
+    if(lines.length<2){alert('No data found.');return;}
+    const hdr=lines[0].split(',').map(h=>h.trim());
+    const idx={date:hdr.indexOf('Date'),time:hdr.indexOf('Time'),session:hdr.indexOf('Session Title'),
+      speed:hdr.indexOf('Speed'),unit:hdr.indexOf('Unit'),player:hdr.indexOf('Player Name'),
+      type:hdr.indexOf('Pitch Type'),zone:hdr.indexOf('Pitch Zone')};
+    if(idx.speed<0||idx.player<0){alert('Could not find Speed or Player Name columns.');return;}
+
+    const pitches=lines.slice(1).map(l=>{
+      const p=l.split(',').map(v=>v.trim());
+      const spd=parseInt(p[idx.speed]);
+      if(isNaN(spd)||spd<10)return null;
+      return{
+        date:idx.date>=0?p[idx.date]:'',
+        time:idx.time>=0?p[idx.time]:'',
+        session:idx.session>=0?p[idx.session]:'Session',
+        speed:spd,
+        unit:idx.unit>=0?p[idx.unit]:'MPH',
+        player:idx.player>=0?p[idx.player]:'',
+        type:idx.type>=0?p[idx.type]:'',
+        zone:idx.zone>=0?p[idx.zone]:'',
+      };
+    }).filter(Boolean);
+
+    if(!pitches.length){alert('No valid pitch speeds found.');return;}
+
+    // Group into one session object per date+sessionTitle+player
+    const sessionMap={};
+    pitches.forEach(p=>{
+      const key=`${p.date}||${p.session}||${p.player}`;
+      if(!sessionMap[key])sessionMap[key]={id:uid(),date:p.date,session:p.session,player:p.player,unit:p.unit,pitches:[]};
+      sessionMap[key].pitches.push({speed:p.speed,type:p.type,zone:p.zone,time:p.time});
+    });
+
+    const sessions=Object.values(sessionMap);
+    // Deduplicate by id — skip if same date+session+player already exists
+    const existingKeys=new Set((DB.velocitySessions||[]).map(s=>`${s.date}||${s.session}||${s.player}`));
+    const toAdd=sessions.filter(s=>!existingKeys.has(`${s.date}||${s.session}||${s.player}`));
+
+    if(!DB.velocitySessions)DB.velocitySessions=[];
+    DB.velocitySessions=[...DB.velocitySessions,...toAdd];
+    scheduleSave();renderTab();
+    showModal(mhdr('⚡ Velocity Imported')+`<div style="text-align:center;padding:20px">
+      <div style="font-size:40px;margin-bottom:12px">✅</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:8px">${pitches.length} pitches imported!</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${toAdd.length} new session(s) added across ${[...new Set(toAdd.map(s=>s.player))].join(', ')||'0 players'}.</div>
+      <button class="btn btn-gold" onclick="closeModal()">Done</button>
+    </div>`);
+  };
+  reader.readAsText(file);input.value='';
+}
+
+function velStats(pitches){
+  const speeds=pitches.map(p=>p.speed);
+  const top=Math.max(...speeds);
+  const avg=speeds.reduce((a,b)=>a+b,0)/speeds.length;
+  const low=Math.min(...speeds);
+  return{top,avg:avg.toFixed(1),low,count:speeds.length};
+}
+
+function renderVelocity(){
+  if(!DB.velocitySessions)DB.velocitySessions=[];
+  const sessions=DB.velocitySessions;
+
+  if(!sessions.length){
+    return `<div class="row" style="margin-bottom:18px">
+      <h2 class="st">⚡ Velocity Tracker</h2><div class="f1"></div>
+      <label class="btn btn-gold">📥 Import Pocket Radar CSV<input type="file" accept=".csv" class="hidden" onchange="importVelocityCSV(this)"></label>
+    </div>
+    <div class="empty">No velocity sessions yet. Export a session from the Pocket Radar app as CSV and import it here.</div>`;
+  }
+
+  // Get all unique players who have sessions
+  const players=[...new Set(sessions.map(s=>s.player))].sort();
+
+  // Per-player summary cards
+  const playerCards=players.map(player=>{
+    const pSessions=sessions.filter(s=>s.player===player).sort((a,b)=>a.date.localeCompare(b.date));
+    const allPitches=pSessions.flatMap(s=>s.pitches);
+    const overall=velStats(allPitches);
+    const unit=pSessions[0]?.unit||'MPH';
+
+    // Sparkline data — average per session
+    const sessionAvgs=pSessions.map(s=>({date:s.date,session:s.session,...velStats(s.pitches)}));
+    const maxSpd=Math.max(...sessionAvgs.map(s=>s.top));
+    const minSpd=Math.min(...sessionAvgs.map(s=>s.low));
+    const range=maxSpd-minSpd||1;
+    const W=280,H=60,pad=8;
+    const pts=sessionAvgs.map((s,i)=>{
+      const x=pad+i*(W-pad*2)/Math.max(sessionAvgs.length-1,1);
+      const y=H-pad-(s.avg-minSpd)/(range)*((H-pad*2));
+      return`${x},${y}`;
+    }).join(' ');
+    const topPts=sessionAvgs.map((s,i)=>{
+      const x=pad+i*(W-pad*2)/Math.max(sessionAvgs.length-1,1);
+      const y=H-pad-(s.top-minSpd)/(range)*((H-pad*2));
+      return`${x},${y}`;
+    }).join(' ');
+
+    const spark=sessionAvgs.length>1?`
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:60px;display:block;margin:8px 0">
+        <polyline points="${pts}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round"/>
+        <polyline points="${topPts}" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-dasharray="4,3" stroke-linejoin="round"/>
+        ${sessionAvgs.map((s,i)=>{
+          const x=pad+i*(W-pad*2)/Math.max(sessionAvgs.length-1,1);
+          const y=H-pad-(s.avg-minSpd)/(range)*((H-pad*2));
+          return`<circle cx="${x}" cy="${y}" r="3" fill="var(--gold)"/>`;
+        }).join('')}
+      </svg>
+      <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:8px">
+        <span style="color:var(--gold)">—— avg</span>
+        <span style="color:var(--green)">- - top</span>
+      </div>`:'<div style="color:var(--muted);font-size:12px;margin:10px 0">Only 1 session — import more to see trends</div>';
+
+    const sessionRows=pSessions.map(s=>{
+      const st=velStats(s.pitches);
+      return`<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <div style="color:var(--muted);min-width:70px">${s.date}</div>
+        <div style="flex:1;color:var(--text)">${esc(s.session)}</div>
+        <div style="color:var(--green);font-weight:700;min-width:40px">▲ ${st.top}</div>
+        <div style="color:var(--gold);font-weight:700;min-width:40px">⌀ ${st.avg}</div>
+        <div style="color:var(--muted);min-width:40px">↓ ${st.low}</div>
+        <div style="color:var(--muted)">${st.count} pitches</div>
+        <button class="btn btn-red btn-xs" onclick="delVelSession('${sessions.indexOf(pSessions[0])>-1?s.id:''}','${esc(s.id)}')">✕</button>
+      </div>`;
+    }).join('');
+
+    // Pitch distribution bar chart
+    const speeds=allPitches.map(p=>p.speed);
+    const distCounts={};
+    speeds.forEach(s=>distCounts[s]=(distCounts[s]||0)+1);
+    const maxCount=Math.max(...Object.values(distCounts),1);
+    const distBars=Object.keys(distCounts).sort((a,b)=>+a-+b).map(spd=>{
+      const pct=Math.round((distCounts[spd]/maxCount)*100);
+      const color=+spd>=overall.top-1?'var(--green)':+spd>=+overall.avg-1?'var(--gold)':'var(--muted)';
+      return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
+        <div style="font-size:10px;min-width:28px;text-align:right;color:var(--muted)">${spd}</div>
+        <div style="flex:1;background:var(--surface);border-radius:3px;height:12px">
+          <div style="background:${color};height:100%;border-radius:3px;width:${pct}%"></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);min-width:20px">${distCounts[spd]}</div>
+      </div>`;
+    }).join('');
+
+    // Find matching roster player
+    const rp=DB.players.find(p=>p.name===player||p.name.toLowerCase().includes(player.split(' ')[0].toLowerCase()));
+
+    return`<div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="font-size:28px">⚾</div>
+        <div>
+          <div style="font-weight:800;font-size:16px">${esc(player)}</div>
+          <div style="font-size:11px;color:var(--muted)">${pSessions.length} session${pSessions.length>1?'s':''} · ${allPitches.length} total pitches</div>
+        </div>
+        <div class="f1"></div>
+        <div style="text-align:right">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:36px;color:var(--green);line-height:1">${overall.top}</div>
+          <div style="font-size:10px;color:var(--muted)">top ${unit}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;color:var(--gold);line-height:1">${overall.avg}</div>
+          <div style="font-size:10px;color:var(--muted)">avg ${unit}</div>
+        </div>
+      </div>
+      ${spark}
+      <div class="row" style="gap:16px;align-items:flex-start">
+        <div style="flex:2">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Sessions</div>
+          ${sessionRows}
+        </div>
+        <div style="flex:1;min-width:120px">
+          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Speed Distribution</div>
+          ${distBars}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return`<div class="row" style="margin-bottom:18px">
+    <h2 class="st">⚡ Velocity Tracker</h2><div class="f1"></div>
+    <button class="btn btn-red btn-sm" onclick="if(!confirm('Clear all velocity sessions?'))return;DB.velocitySessions=[];scheduleSave();renderTab()">🗑 Clear All</button>
+    &nbsp;<label class="btn btn-gold">📥 Import Pocket Radar CSV<input type="file" accept=".csv" class="hidden" onchange="importVelocityCSV(this)"></label>
+  </div>
+  <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Import session CSVs from the Pocket Radar app. Each file can contain multiple players. Sessions are tracked over time so you can spot velocity trends.</div>
+  ${playerCards}`;
+}
+
+function delVelSession(dummy, id){
+  if(!id)return;
+  DB.velocitySessions=(DB.velocitySessions||[]).filter(s=>s.id!==id);
+  scheduleSave();renderTab();
+}
+
 
 // ═══ DRILLS ══════════════════════════════════════════════
 let DF={cat:'All',name:'',tag:'',type:''};
@@ -1126,7 +1328,9 @@ function showPlanEditor(isNew){
         ondrop="onDrop(event,'${item.id}',false)">
         <div class="row" style="margin-bottom:8px;gap:6px">
           <span class="drag-handle" title="Drag to reorder">⠿</span>
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold);line-height:1;min-width:24px">${ti}.</div>
+          <input type="number" min="1" value="${ti}" data-reorder-id="${item.id}"
+            style="width:44px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold);background:transparent;border:1px solid var(--border);border-radius:6px;padding:2px 4px"
+            title="Type a number then click ↕ Reorder to apply"/>
           ${d?`<div style="font-weight:600;font-size:13px;f1:1;min-width:0">${esc(d.name)} <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${d.category}</span></div>`:
           `<input value="${esc(item.customName||'')}" placeholder="Activity name" style="flex:1;font-size:13px" onchange="updPI('${item.id}','customName',this.value)"/>`}
           ${tstr}
@@ -1255,6 +1459,31 @@ function showPlanEditor(isNew){
       </div>
     </div>`,true);
   setTimeout(()=>rDPick(),50);
+}
+function reorderPlanItems(){
+  if(!EP)return;
+  // Read all number inputs with data-reorder-id and sort items by their typed number
+  const inputs=[...document.querySelectorAll('[data-reorder-id]')];
+  if(!inputs.length)return;
+  // Build map of id → typed order number
+  const orderMap={};
+  inputs.forEach(inp=>{
+    const id=inp.dataset.reorderId;
+    const num=parseInt(inp.value)||999;
+    orderMap[id]=num;
+  });
+  // Sort EP.items by the typed number, keeping items not in orderMap at end
+  EP.items.sort((a,b)=>{
+    const an=orderMap[a.id]??orderMap[a.blockId]??999;
+    const bn=orderMap[b.id]??orderMap[b.blockId]??999;
+    return an-bn;
+  });
+  syncEP();
+  rPE(!DB.plans.find(p=>p.id===EP.id));
+  // Flash feedback
+  const btn=document.querySelector('[onclick="reorderPlanItems()"]');
+  if(btn){btn.textContent='✓ Reordered!';btn.style.background='var(--green)';btn.style.color='#000';
+    setTimeout(()=>{btn.textContent='↕ Reorder';btn.style.background='';btn.style.color='';},1500);}
 }
 function syncEP(){
   if(!EP)return;
@@ -1515,6 +1744,7 @@ function viewPlan(id){
       <div class="f1"></div>
       <button class="btn btn-dim btn-sm" onclick="copyPlanLink('${id}')">🔗 Copy Link</button>
       <button class="btn btn-dim btn-sm" onclick="emailPlan('${id}')">✉ Email</button>
+      <button class="btn btn-dim btn-sm" onclick="reorderPlanItems()">↕ Reorder</button>
       <button class="btn btn-blue btn-sm" onclick="dlCoachSheet('${id}')">📋 Coach Sheet</button>
       <button class="btn btn-gold btn-sm" onclick="dlPlan('${id}')">🖨 Download</button>
     </div>
@@ -3350,13 +3580,15 @@ function saveGame(isNew){if(!EG)return;
     EG.lineup.forEach(e=>{if(e.outForGame)e.inningsPlayed=0;});
   }
   if(isNew)DB.games.push(EG);else{const i=DB.games.findIndex(g=>g.id===EG.id);if(i>=0)DB.games[i]=EG;}
-  scheduleSave();updateCounts();
-  // Stay in editor — just re-render modal with updated data
-  showGameModal(false);
-  setTimeout(()=>{
-    const btn=document.querySelector('[onclick^="saveGame"]');
-    if(btn){const orig=btn.textContent;btn.textContent='✓ Saved!';btn.style.background='var(--green)';btn.style.color='#000';setTimeout(()=>{btn.textContent=orig;btn.style.background='';btn.style.color='';},1800);}
-  },50);
+  scheduleSave();updateCounts();renderTab();
+  closeModal();
+  setTimeout(()=>showModal(mhdr('✓ Game Saved')+`<div style="text-align:center;padding:20px">
+    <div style="font-size:40px;margin-bottom:10px">✅</div>
+    <div style="font-weight:700;font-size:16px;margin-bottom:8px">${esc(EG.opponent||'Game')} saved!</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">You can now open it to set your lineup and inning assignments.</div>
+    <button class="btn btn-gold" onclick="editGame('${EG.id}')">Open Lineup →</button>
+    <button class="btn btn-dim" style="margin-left:8px" onclick="closeModal()">Done</button>
+  </div>`),100);
 }
 function delGame(id){DB.games=DB.games.filter(g=>g.id!==id);scheduleSave();renderTab();updateCounts();}
 function showPT(){
