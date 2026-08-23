@@ -549,6 +549,83 @@ function renderTab(){
 }
 
 // ═══ BACKUP / RESTORE ═══════════════════════════════════
+function importCarryover(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const b=JSON.parse(e.target.result);
+      const seasonName=prompt('What season is this data from?','Spring 2026');
+      if(!seasonName)return;
+
+      let statsAdded=0,metricsAdded=0,skillsAdded=0;
+
+      // Import gcStats tagged with prior season
+      if(b.gcStats&&b.gcStats.length){
+        const existing=new Set((DB.gcStats||[]).map(r=>r._label+'||'+r._date+'||'+r._rawName));
+        const toAdd=b.gcStats.map(r=>({...r,_season:seasonName}))
+          .filter(r=>!existing.has(r._label+'||'+r._date+'||'+r._rawName));
+        DB.gcStats=[...(DB.gcStats||[]),...toAdd];
+        statsAdded=toAdd.length;
+      }
+
+      // Import development metrics — merge by playerId
+      if(b.metrics&&Object.keys(b.metrics).length){
+        if(!DB.metrics)DB.metrics={};
+        // Match by player name since IDs differ between hubs
+        Object.entries(b.metrics).forEach(([pid,entries])=>{
+          const oldPlayer=b.players?.find(p=>p.id===pid);
+          if(!oldPlayer)return;
+          const newPlayer=DB.players.find(p=>p.name===oldPlayer.name);
+          if(!newPlayer)return;
+          if(!DB.metrics[newPlayer.id])DB.metrics[newPlayer.id]=[];
+          const existingDates=new Set(DB.metrics[newPlayer.id].map(e=>e.date+'||'+e.metric));
+          const toAdd=(entries||[]).filter(e=>!existingDates.has(e.date+'||'+e.metric));
+          DB.metrics[newPlayer.id]=[...DB.metrics[newPlayer.id],...toAdd];
+          metricsAdded+=toAdd.length;
+        });
+      }
+
+      // Import player skills — merge by player name
+      if(b.playerSkills&&b.playerSkills.length){
+        if(!DB.playerSkills)DB.playerSkills=[];
+        b.playerSkills.forEach(oldSkill=>{
+          const oldPlayer=b.players?.find(p=>p.id===oldSkill.playerId);
+          if(!oldPlayer)return;
+          const newPlayer=DB.players.find(p=>p.name===oldPlayer.name);
+          if(!newPlayer)return;
+          const exists=DB.playerSkills.find(s=>s.playerId===newPlayer.id&&s.skill===oldSkill.skill);
+          if(!exists){
+            DB.playerSkills.push({...oldSkill,playerId:newPlayer.id});
+            skillsAdded++;
+          }
+        });
+      }
+
+      scheduleSave();renderTab();updateCounts();
+      showModal(mhdr('✅ Season Data Carried Over')+`<div style="padding:16px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Data from <strong>${esc(seasonName)}</strong> has been imported:</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+          <div style="display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--surface);border-radius:8px">
+            <span style="font-size:20px">📊</span>
+            <div><div style="font-weight:700">${statsAdded} stat rows imported</div><div style="font-size:11px;color:var(--muted)">Tagged as ${esc(seasonName)} — view in Stats → season filter</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--surface);border-radius:8px">
+            <span style="font-size:20px">📈</span>
+            <div><div style="font-weight:700">${metricsAdded} development entries imported</div><div style="font-size:11px;color:var(--muted)">Player development history carried forward</div></div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--surface);border-radius:8px">
+            <span style="font-size:20px">⭐</span>
+            <div><div style="font-weight:700">${skillsAdded} player skills imported</div><div style="font-size:11px;color:var(--muted)">Skill assessments carried forward</div></div>
+          </div>
+        </div>
+        <button class="btn btn-gold" style="width:100%" onclick="closeModal()">Done</button>
+      </div>`);
+    }catch(err){alert('Could not read backup file: '+err.message);}
+    input.value='';
+  };
+  reader.readAsText(file);
+}
 function exportBackup(){
   const b={_v:2,_label:'HAMR Fall 26 Hub Backup',_date:new Date().toISOString(),
     players:DB.players,plans:DB.plans,metrics:DB.metrics,games:DB.games,
@@ -619,6 +696,7 @@ function showSettings(){
       <div class="row" style="flex-wrap:wrap;gap:8px">
         <button class="btn btn-green btn-sm" onclick="exportBackup()">💾 Backup Data</button>
         <label class="btn btn-dim btn-sm">📂 Restore Backup<input type="file" accept=".json" class="hidden" onchange="importBackup(this)"></label>
+        <label class="btn btn-blue btn-sm">⏮ Carry Over from Spring Hub<input type="file" accept=".json" class="hidden" onchange="importCarryover(this)"></label>
         <label class="btn btn-blue btn-sm">📥 Import Drills<input type="file" accept=".json" class="hidden" onchange="importDrills(this)"></label>
         <button class="btn btn-red btn-sm" onclick="if(confirm('Disconnect and reload?')){localStorage.removeItem('${GIST_ID_KEY}');localStorage.removeItem('${GH_TOKEN_KEY}');location.reload();}">Disconnect</button>
       </div>
