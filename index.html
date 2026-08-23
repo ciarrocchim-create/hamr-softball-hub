@@ -569,20 +569,22 @@ function importCarryover(input){
         statsAdded=toAdd.length;
       }
 
-      // Import development metrics — merge by playerId
-      if(b.metrics&&Object.keys(b.metrics).length){
-        if(!DB.metrics)DB.metrics={};
-        // Match by player name since IDs differ between hubs
-        Object.entries(b.metrics).forEach(([pid,entries])=>{
-          const oldPlayer=b.players?.find(p=>p.id===pid);
+      // Import development metrics — flat array, match players by name
+      if(b.metrics&&b.metrics.length){
+        if(!DB.metrics)DB.metrics=[];
+        const existingIds=new Set(DB.metrics.map(m=>m.id));
+        b.metrics.forEach(m=>{
+          // Find the old player name from the backup's player list
+          const oldPlayer=b.players?.find(p=>p.id===m.playerId);
           if(!oldPlayer)return;
+          // Match to current roster by name
           const newPlayer=DB.players.find(p=>p.name===oldPlayer.name);
           if(!newPlayer)return;
-          if(!DB.metrics[newPlayer.id])DB.metrics[newPlayer.id]=[];
-          const existingDates=new Set(DB.metrics[newPlayer.id].map(e=>e.date+'||'+e.metric));
-          const toAdd=(entries||[]).filter(e=>!existingDates.has(e.date+'||'+e.metric));
-          DB.metrics[newPlayer.id]=[...DB.metrics[newPlayer.id],...toAdd];
-          metricsAdded+=toAdd.length;
+          // Skip if already imported (same id or same date+metric+player combo)
+          const dupCheck=DB.metrics.find(x=>x.playerId===newPlayer.id&&x.metricKey===m.metricKey&&x.date===m.date&&x.value===m.value);
+          if(dupCheck)return;
+          DB.metrics.push({...m,id:uid(),playerId:newPlayer.id});
+          metricsAdded++;
         });
       }
 
