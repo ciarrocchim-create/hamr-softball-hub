@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
-<title>⚡ HAMR Softball Hub</title>
+<title>⚡ HAMR Fall 26 Hub</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -160,7 +160,7 @@ canvas{display:block;width:100%!important}
 <!-- SETUP -->
 <div id="setup">
   <div class="setup-box">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;color:var(--gold);letter-spacing:2px;margin-bottom:4px">⚡ HAMR Softball Hub</div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;color:var(--gold);letter-spacing:2px;margin-bottom:4px">⚡ HAMR Fall 26 Hub</div>
     <div style="color:var(--muted);font-size:12px;margin-bottom:24px">HAMR Hawks · 12U · Powered by GitHub Gist sync</div>
     <div class="dots" id="dots"></div>
     <div id="setup-body"></div>
@@ -171,7 +171,7 @@ canvas{display:block;width:100%!important}
 <div id="app" class="hidden">
   <div id="hdr">
     <div>
-      <div class="logo">⚡ HAMR Softball Hub</div>
+      <div class="logo">⚡ HAMR Fall 26 Hub</div>
       <div class="sub">HAMR Hawks · 12U</div>
     </div>
     <div id="hdr-right">
@@ -362,25 +362,8 @@ const TYPE_COLOR={'Drill':'#5b8af5','Tip':'#c97af5','Warmup':'#3ddc84','Progress
 const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catching:'#c97af5',Baserunning:'#f5a05b',Conditioning:'#f16b6b',Other:'#7b88a8'};
 const GIST_ID_KEY='sh_gist_id';
 const GH_TOKEN_KEY='sh_gh_token';
-const SEED_GAMES=[
-  {opponent:'CLLL',date:'2026-04-26',location:'Home',innings:6,score:23,oppScore:9,result:'W',played:true},
-  {opponent:'East Hampton',date:'2026-04-30',location:'Away',innings:6,score:10,oppScore:12,result:'L',played:true},
-  {opponent:'Colchester',date:'2026-05-02',location:'Home',innings:6},
-  {opponent:'Willimantic',date:'2026-05-05',location:'Away',innings:6},
-  {opponent:'Colchester',date:'2026-05-09',location:'Away',innings:6},
-  {opponent:'East Hampton',date:'2026-05-13',location:'Away',innings:6},
-  {opponent:'SFC',date:'2026-05-15',location:'Home',innings:6},
-  {opponent:'CLL',date:'2026-05-16',location:'Away',innings:6},
-  {opponent:'Willimantic',date:'2026-05-23',location:'Home',innings:6},
-  {opponent:'Willimantic-2',date:'2026-05-23',location:'Home',innings:6},
-  {opponent:'Norwich',date:'2026-05-30',location:'Home',innings:6},
-  {opponent:'Preston',date:'2026-05-30',location:'Home',innings:6},
-  {opponent:'SFC',date:'2026-06-02',location:'Away',innings:6},
-  {opponent:'Willimantic-2',date:'2026-06-04',location:'Away',innings:6},
-  {opponent:'Norwich',date:'2026-06-06',location:'Away',innings:6},
-  {opponent:'CLL',date:'2026-06-13',location:'Home',innings:6},
-];
-const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[],velocitySessions:[],jokes:[]};
+const SEED_GAMES=[];
+const BLANK_DB={players:[],drills:[],plans:[],metrics:[],games:[],gcStats:[],playerSkills:[],velocitySessions:[],currentSeason:'Fall 2026',seasons:['Fall 2026'],jokes:[]};
 
 // ═══ STATE ══════════════════════════════════════════════
 let gistId=localStorage.getItem(GIST_ID_KEY)||'';
@@ -456,7 +439,7 @@ async function gistLoad(gid,token){
   if(r.status===404)throw new Error('Gist not found — check your Gist ID');
   if(!r.ok)throw new Error('HTTP '+r.status);
   const gist=await r.json();
-  const file=gist.files['hamr_hub.json'];
+  const file=gist.files['hamr_fall26.json'];
   if(!file)throw new Error('File hamr_hub.json not found in gist — make sure you named the file exactly hamr_hub.json');
   let data={};
   try{data=JSON.parse(file.content||'{}');}catch(e){data={};}
@@ -502,7 +485,7 @@ async function gistSave(gid,token,data){
   const r=await fetch(`https://api.github.com/gists/${gid}`,{
     method:'PATCH',
     headers:{'Authorization':'token '+token,'Accept':'application/vnd.github.v3+json','Content-Type':'application/json'},
-    body:JSON.stringify({files:{'hamr_hub.json':{content:payload}}})
+    body:JSON.stringify({files:{'hamr_fall26.json':{content:payload}}})
   });
   if(!r.ok){
     const body=await r.json().catch(()=>({}));
@@ -567,7 +550,7 @@ function renderTab(){
 
 // ═══ BACKUP / RESTORE ═══════════════════════════════════
 function exportBackup(){
-  const b={_v:2,_label:'HAMR Softball Hub Backup',_date:new Date().toISOString(),
+  const b={_v:2,_label:'HAMR Fall 26 Hub Backup',_date:new Date().toISOString(),
     players:DB.players,plans:DB.plans,metrics:DB.metrics,games:DB.games,
     gcStats:DB.gcStats,playerSkills:DB.playerSkills||[],velocitySessions:DB.velocitySessions||[]};
   const blob=new Blob([JSON.stringify(b,null,2)],{type:'application/json'});
@@ -582,7 +565,7 @@ function importBackup(input){
   reader.onload=ev=>{
     try{
       const b=JSON.parse(ev.target.result);
-      if(b._label!=='HAMR Softball Hub Backup')throw new Error('Not a valid backup');
+      if(b._label!=='HAMR Fall 26 Hub Backup')throw new Error('Not a valid backup');
       Object.assign(DB,{players:b.players||DB.players,plans:b.plans||DB.plans,
         metrics:b.metrics||DB.metrics,games:b.games||DB.games,
         gcStats:b.gcStats||DB.gcStats,playerSkills:b.playerSkills||[],velocitySessions:b.velocitySessions||[]});
@@ -659,7 +642,7 @@ function renderSetup(){
       <ol style="padding-left:20px;color:var(--muted);line-height:2.8">
         <li>Go to <a href="https://github.com/settings/tokens" target="_blank" style="color:var(--gold)">github.com/settings/tokens</a></li>
         <li>Click <strong style="color:var(--text)">Generate new token → Generate new token (classic)</strong></li>
-        <li>Name it <strong style="color:var(--text)">HAMR Softball Hub</strong></li>
+        <li>Name it <strong style="color:var(--text)">HAMR Fall 26 Hub</strong></li>
         <li>Check the <strong style="color:var(--text)">gist</strong> scope (just that one)</li>
         <li>Click <strong style="color:var(--text)">Generate token</strong> → copy it immediately (you won't see it again)</li>
       </ol>
@@ -842,6 +825,27 @@ function confirmCSV(players){
 }
 
 // ═══ VELOCITY ════════════════════════════════════════════
+// Zone layout (Pocket Radar, from catcher's view):
+// Strike zone 3x3: 1=TL,2=TC,3=TR,4=ML,5=MC,6=MR,7=BL,8=BC,9=BR
+// Ball: 10=High,11=Low,12=Inside,13=Outside,14=WayOutside
+
+const VEL_ZONES={
+  1:{row:0,col:0,label:'Top-In',strike:true},
+  2:{row:0,col:1,label:'Top-Mid',strike:true},
+  3:{row:0,col:2,label:'Top-Out',strike:true},
+  4:{row:1,col:0,label:'Mid-In',strike:true},
+  5:{row:1,col:1,label:'Mid-Mid',strike:true},
+  6:{row:1,col:2,label:'Mid-Out',strike:true},
+  7:{row:2,col:0,label:'Low-In',strike:true},
+  8:{row:2,col:1,label:'Low-Mid',strike:true},
+  9:{row:2,col:2,label:'Low-Out',strike:true},
+  10:{label:'High',strike:false},
+  11:{label:'Low',strike:false},
+  12:{label:'Inside',strike:false},
+  13:{label:'Outside',strike:false},
+  14:{label:'Way Out',strike:false},
+};
+
 function importVelocityCSV(input){
   const file=input.files[0];if(!file)return;
   const reader=new FileReader();
@@ -849,49 +853,36 @@ function importVelocityCSV(input){
     const lines=ev.target.result.trim().split(/\r?\n/);
     if(lines.length<2){alert('No data found.');return;}
     const hdr=lines[0].split(',').map(h=>h.trim());
-    const idx={date:hdr.indexOf('Date'),time:hdr.indexOf('Time'),session:hdr.indexOf('Session Title'),
-      speed:hdr.indexOf('Speed'),unit:hdr.indexOf('Unit'),player:hdr.indexOf('Player Name'),
-      type:hdr.indexOf('Pitch Type'),zone:hdr.indexOf('Pitch Zone')};
-    if(idx.speed<0||idx.player<0){alert('Could not find Speed or Player Name columns.');return;}
-
+    const col=k=>hdr.indexOf(k);
+    const [iDate,iTime,iSess,iSpd,iUnit,iPlayer,iType,iZone,iView]=
+      ['Date','Time','Session Title','Speed','Unit','Player Name','Pitch Type','Pitch Zone','Pitch View'].map(col);
+    if(iSpd<0||iPlayer<0){alert('Could not find Speed or Player Name columns.');return;}
     const pitches=lines.slice(1).map(l=>{
       const p=l.split(',').map(v=>v.trim());
-      const spd=parseInt(p[idx.speed]);
+      const spd=parseInt(p[iSpd]);
       if(isNaN(spd)||spd<10)return null;
-      return{
-        date:idx.date>=0?p[idx.date]:'',
-        time:idx.time>=0?p[idx.time]:'',
-        session:idx.session>=0?p[idx.session]:'Session',
-        speed:spd,
-        unit:idx.unit>=0?p[idx.unit]:'MPH',
-        player:idx.player>=0?p[idx.player]:'',
-        type:idx.type>=0?p[idx.type]:'',
-        zone:idx.zone>=0?p[idx.zone]:'',
-      };
+      return{date:p[iDate]||'',time:p[iTime]||'',session:p[iSess]||'Session',
+        speed:spd,unit:p[iUnit]||'MPH',player:p[iPlayer]||'',
+        type:p[iType]||'',zone:p[iZone]||'',view:p[iView]||''};
     }).filter(Boolean);
-
     if(!pitches.length){alert('No valid pitch speeds found.');return;}
-
-    // Group into one session object per date+sessionTitle+player
     const sessionMap={};
     pitches.forEach(p=>{
       const key=`${p.date}||${p.session}||${p.player}`;
-      if(!sessionMap[key])sessionMap[key]={id:uid(),date:p.date,session:p.session,player:p.player,unit:p.unit,pitches:[]};
-      sessionMap[key].pitches.push({speed:p.speed,type:p.type,zone:p.zone,time:p.time});
+      if(!sessionMap[key])sessionMap[key]={id:uid(),date:p.date,session:p.session,
+        player:p.player,unit:p.unit,pitches:[]};
+      sessionMap[key].pitches.push({speed:p.speed,type:p.type,zone:p.zone,time:p.time,view:p.view});
     });
-
     const sessions=Object.values(sessionMap);
-    // Deduplicate by id — skip if same date+session+player already exists
     const existingKeys=new Set((DB.velocitySessions||[]).map(s=>`${s.date}||${s.session}||${s.player}`));
     const toAdd=sessions.filter(s=>!existingKeys.has(`${s.date}||${s.session}||${s.player}`));
-
     if(!DB.velocitySessions)DB.velocitySessions=[];
     DB.velocitySessions=[...DB.velocitySessions,...toAdd];
     scheduleSave();renderTab();
     showModal(mhdr('⚡ Velocity Imported')+`<div style="text-align:center;padding:20px">
       <div style="font-size:40px;margin-bottom:12px">✅</div>
       <div style="font-weight:700;font-size:16px;margin-bottom:8px">${pitches.length} pitches imported!</div>
-      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${toAdd.length} new session(s) added across ${[...new Set(toAdd.map(s=>s.player))].join(', ')||'0 players'}.</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">${toAdd.length} new session(s) · ${[...new Set(toAdd.map(s=>s.player))].join(', ')}</div>
       <button class="btn btn-gold" onclick="closeModal()">Done</button>
     </div>`);
   };
@@ -899,12 +890,143 @@ function importVelocityCSV(input){
 }
 
 function velStats(pitches){
-  const speeds=pitches.map(p=>p.speed);
-  const top=Math.max(...speeds);
-  const avg=speeds.reduce((a,b)=>a+b,0)/speeds.length;
-  const low=Math.min(...speeds);
-  return{top,avg:avg.toFixed(1),low,count:speeds.length};
+  const s=pitches.map(p=>p.speed);
+  const zoned=pitches.filter(p=>p.zone&&p.zone!=='');
+  const strikes=zoned.filter(p=>VEL_ZONES[+p.zone]?.strike);
+  return{
+    top:Math.max(...s),avg:(s.reduce((a,b)=>a+b,0)/s.length).toFixed(1),
+    low:Math.min(...s),count:s.length,
+    strikePct:zoned.length?(strikes.length/zoned.length*100).toFixed(0):null,
+    strikeCount:strikes.length,ballCount:zoned.length-strikes.length,zonedCount:zoned.length,
+  };
 }
+
+function velZoneMap(pitches){
+  // returns counts per zone (1-14)
+  const map={};
+  pitches.forEach(p=>{const z=+p.zone;if(z>=1&&z<=14){map[z]=map[z]||{count:0,speeds:[]};map[z].count++;map[z].speeds.push(p.speed);}});
+  return map;
+}
+
+function renderZoneHeatmap(pitches){
+  const zMap=velZoneMap(pitches);
+  const maxCount=Math.max(...Object.values(zMap).map(z=>z.count),1);
+  const cellW=54,cellH=46,padX=60,padY=40;
+  const W=padX+cellW*3+padX,H=padY+cellH*3+padY+30;
+
+  // Strike zone cells
+  let cells='';
+  for(let r=0;r<3;r++){
+    for(let c=0;c<3;c++){
+      const zone=r*3+c+1;
+      const x=padX+c*cellW,y=padY+r*cellH;
+      const d=zMap[zone]||{count:0,speeds:[]};
+      const pct=d.count/maxCount;
+      const alpha=Math.round(pct*0.85*255).toString(16).padStart(2,'0');
+      const avgSpd=d.speeds.length?(d.speeds.reduce((a,b)=>a+b,0)/d.speeds.length).toFixed(0):'';
+      const textColor=pct>0.5?'fff':'88aaff';
+      cells+=`<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" fill="#4488ff${alpha}" stroke="#2244aa" stroke-width="1" rx="2"/>
+        <text x="${x+cellW/2}" y="${y+cellH/2-6}" text-anchor="middle" dominant-baseline="middle" font-size="16" font-weight="800" fill="#${textColor}">${d.count||''}</text>
+        ${avgSpd?`<text x="${x+cellW/2}" y="${y+cellH/2+10}" text-anchor="middle" font-size="9" fill="#${textColor}88">${avgSpd}</text>`:''}`;
+    }
+  }
+
+  // Ball zone labels around outside
+  const ballZones=[
+    {z:10,x:padX+cellW*1.5,y:padY-22,label:'HIGH'},
+    {z:11,x:padX+cellW*1.5,y:padY+cellH*3+22,label:'LOW'},
+    {z:12,x:padX-28,y:padY+cellH*1.5,label:'IN'},
+    {z:13,x:padX+cellW*3+28,y:padY+cellH*1.5,label:'OUT'},
+    {z:14,x:padX+cellW*3+42,y:padY+cellH*2,label:'WAY\nOUT'},
+  ];
+  let ballLabels='';
+  ballZones.forEach(bz=>{
+    const d=zMap[bz.z]||{count:0};
+    const isHigh=d.count>4;
+    const col=isHigh?'ff6644':'888888';
+    ballLabels+=`<circle cx="${bz.x}" cy="${bz.y}" r="${Math.max(10,d.count*2.5)}" fill="#${col}${d.count?'44':'22'}" stroke="#${col}" stroke-width="${d.count?1.5:0.5}"/>
+      <text x="${bz.x}" y="${bz.y-1}" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="800" fill="#${col}">${d.count||0}</text>
+      <text x="${bz.x}" y="${bz.y+9}" text-anchor="middle" font-size="7" fill="#888">${bz.label.replace('\n',' ')}</text>`;
+  });
+
+  // Strike zone border
+  const border=`<rect x="${padX}" y="${padY}" width="${cellW*3}" height="${cellH*3}" fill="none" stroke="#4488ff" stroke-width="2" rx="3"/>`;
+
+  // Home plate indicator
+  const plate=`<polygon points="${padX+cellW*1.5},${H-8} ${padX+cellW*1.5-14},${H-22} ${padX+cellW*1.5+14},${H-22}" fill="#ffffff44" stroke="#ffffff66" stroke-width="1"/>`;
+
+  // Labels
+  const colLabels=['IN','MID','OUT'].map((l,i)=>`<text x="${padX+i*cellW+cellW/2}" y="${padY-8}" text-anchor="middle" font-size="8" fill="#4488ff66">${l}</text>`).join('');
+  const rowLabels=['TOP','MID','BOT'].map((l,i)=>`<text x="${padX-6}" y="${padY+i*cellH+cellH/2}" text-anchor="end" dominant-baseline="middle" font-size="8" fill="#4488ff66">${l}</text>`).join('');
+
+  const stPitches=Object.entries(zMap).filter(([z])=>+z<=9).reduce((a,[,v])=>a+v.count,0);
+  const totZoned=Object.values(zMap).reduce((a,v)=>a+v.count,0);
+  const pctLbl=totZoned?`${Math.round(stPitches/totZoned*100)}% strikes (${stPitches}/${totZoned} placed)`:'';
+
+  return`<div style="background:var(--navy);border-radius:12px;padding:12px;display:inline-block">
+    <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#4488ff88;margin-bottom:6px;text-align:center">PITCH LOCATIONS</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:240px;height:auto;display:block;margin:0 auto">
+      ${border}${cells}${ballLabels}${plate}${colLabels}${rowLabels}
+    </svg>
+    <div style="text-align:center;font-size:11px;color:#4488ff;margin-top:6px;font-weight:700">${pctLbl}</div>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:4px;font-size:9px;color:#888">
+      <span>🔵 strikes (count/avg)</span><span>🔴 balls</span>
+    </div>
+  </div>`;
+}
+
+function renderVelInsights(pitches, playerAllSessions){
+  const stats=velStats(pitches);
+  const zMap=velZoneMap(pitches);
+  const insights=[];
+
+  // Strike %
+  if(stats.strikePct!==null){
+    const pct=+stats.strikePct;
+    if(pct>=65)insights.push({icon:'✅',color:'var(--green)',text:`Strong control — ${pct}% strike rate. Keep attacking the zone.`});
+    else if(pct>=50)insights.push({icon:'🟡',color:'var(--gold)',text:`${pct}% strike rate — decent but room to improve. Target the middle third of the zone more.`});
+    else insights.push({icon:'🔴',color:'var(--red)',text:`${pct}% strike rate — focus on command. Too many pitches outside the zone let batters wait for their pitch.`});
+  }
+
+  // Most common miss
+  const ballZones=Object.entries(zMap).filter(([z])=>+z>9).sort((a,b)=>b[1].count-a[1].count);
+  if(ballZones.length){
+    const [topMiss,topData]=ballZones[0];
+    const missName=VEL_ZONES[+topMiss]?.label||'Unknown';
+    if(topData.count>=3)insights.push({icon:'📍',color:'var(--gold)',text:`Most common miss: ${missName} (${topData.count} pitches zone ${topMiss}). ${+topMiss===13?'Focus on keeping the ball off the outer half and driving it toward the inside of the zone.':+topMiss===11?'Ball is running low — work on hip extension and keeping the release point consistent.':+topMiss===12?'Running inside — check that the arm is staying through the ball.':'Adjust release point to bring the ball back into the zone.'}`});
+  }
+
+  // Velocity observation
+  const top=stats.top,avg=+stats.avg;
+  const gap=top-avg;
+  if(gap>=4)insights.push({icon:'⚡',color:'var(--blue)',text:`Speed ceiling ${top} MPH but avg is ${avg} — ${gap.toFixed(1)} MPH gap. Some pitches are noticeably harder than others. Focus on repeating the mechanics of the faster pitches.`});
+  else insights.push({icon:'⚡',color:'var(--green)',text:`Consistent velocity — only ${gap.toFixed(1)} MPH between top (${top}) and avg (${avg}). Good mechanical repeatability.`});
+
+  // Zone preference
+  const strikeZones=Object.entries(zMap).filter(([z])=>+z<=9).sort((a,b)=>b[1].count-a[1].count);
+  if(strikeZones.length){
+    const [topStrikeZone,topStrikeData]=strikeZones[0];
+    const zInfo=VEL_ZONES[+topStrikeZone];
+    if(topStrikeData.count>=3)insights.push({icon:'🎯',color:'var(--muted)',text:`Favorite strike zone: ${zInfo.label} (zone ${topStrikeZone}, ${topStrikeData.count} pitches). ${+topStrikeZone===6?'Good use of the outer third — hard for batters to pull.':+topStrikeZone===5?'Working the heart of the plate — mix in corners to keep batters off balance.':'Continue working that quadrant but vary locations to stay unpredictable.'}`});
+  }
+
+  // Cross-session velocity trend
+  if(playerAllSessions&&playerAllSessions.length>1){
+    const sorted=playerAllSessions.sort((a,b)=>a.date.localeCompare(b.date));
+    const firstAvg=+velStats(sorted[0].pitches).avg;
+    const lastAvg=+velStats(sorted[sorted.length-1].pitches).avg;
+    const diff=(lastAvg-firstAvg).toFixed(1);
+    if(+diff>0.5)insights.push({icon:'📈',color:'var(--green)',text:`Velocity trending UP — avg speed has increased ${diff} MPH since first recorded session. Arm strength is building.`});
+    else if(+diff<-0.5)insights.push({icon:'📉',color:'var(--red)',text:`Velocity trending down ${Math.abs(diff)} MPH from first session. Check for fatigue or mechanical breakdown — may be time for rest.`});
+  }
+
+  return insights.map(i=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border-radius:8px;background:var(--surface);border-left:4px solid ${i.color};margin-bottom:8px">
+    <span style="font-size:18px;flex-shrink:0">${i.icon}</span>
+    <span style="font-size:12px;line-height:1.6;color:var(--text)">${i.text}</span>
+  </div>`).join('');
+}
+
+let _velPlayer=null,_velSession=null;
 
 function renderVelocity(){
   if(!DB.velocitySessions)DB.velocitySessions=[];
@@ -915,127 +1037,192 @@ function renderVelocity(){
       <h2 class="st">⚡ Velocity Tracker</h2><div class="f1"></div>
       <label class="btn btn-gold">📥 Import Pocket Radar CSV<input type="file" accept=".csv" class="hidden" onchange="importVelocityCSV(this)"></label>
     </div>
-    <div class="empty">No velocity sessions yet. Export a session from the Pocket Radar app as CSV and import it here.</div>`;
+    <div class="card" style="padding:24px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">📡</div>
+      <div style="font-weight:700;font-size:16px;margin-bottom:8px">No velocity sessions yet</div>
+      <div style="font-size:13px;color:var(--muted);max-width:400px;margin:0 auto">Export a session from the Pocket Radar app as CSV and import it here to track pitcher velocity, strike rate, and location data over time.</div>
+    </div>`;
   }
 
-  // Get all unique players who have sessions
+  // Detail view — single session
+  if(_velSession){
+    const s=sessions.find(x=>x.id===_velSession);
+    if(!s){_velSession=null;return renderVelocity();}
+    const pAllSessions=sessions.filter(x=>x.player===s.player).sort((a,b)=>a.date.localeCompare(b.date));
+    const st=velStats(s.pitches);
+    const heatmap=renderZoneHeatmap(s.pitches);
+    const insights=renderVelInsights(s.pitches,pAllSessions);
+
+    // Pitch-by-pitch mini chart
+    const W=400,H=60,pad=6;
+    const speeds=s.pitches.map(p=>p.speed);
+    const maxS=Math.max(...speeds),minS=Math.min(...speeds),rng=maxS-minS||1;
+    const pts=speeds.map((spd,i)=>{
+      const x=pad+i*(W-pad*2)/(speeds.length-1||1);
+      const y=H-pad-(spd-minS)/rng*(H-pad*2);
+      return`${x},${y}`;
+    }).join(' ');
+    const avgY=H-pad-(+st.avg-minS)/rng*(H-pad*2);
+    const pitchChart=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:50px;display:block;border-radius:6px;background:var(--navy)">
+      <line x1="${pad}" y1="${avgY}" x2="${W-pad}" y2="${avgY}" stroke="#f0a500" stroke-width="0.8" stroke-dasharray="4,3" opacity="0.5"/>
+      <polyline points="${pts}" fill="none" stroke="#5bf5aa" stroke-width="1.5" stroke-linejoin="round"/>
+      ${speeds.map((spd,i)=>{
+        const x=pad+i*(W-pad*2)/(speeds.length-1||1);
+        const y=H-pad-(spd-minS)/rng*(H-pad*2);
+        return`<circle cx="${x}" cy="${y}" r="2.5" fill="${spd===maxS?'#ff4444':spd===minS?'#888':'#5bf5aa'}"/>`;
+      }).join('')}
+    </svg>`;
+
+    // Zone breakdown table
+    const zMap=velZoneMap(s.pitches);
+    const zoneTable=['STRIKES','BALLS'].map(type=>{
+      const isStrike=type==='STRIKES';
+      const zones=Object.entries(zMap).filter(([z])=>VEL_ZONES[+z]?.strike===isStrike);
+      if(!zones.length)return'';
+      const rows=zones.sort((a,b)=>b[1].count-a[1].count).map(([z,d])=>{
+        const avg=d.speeds.length?(d.speeds.reduce((a,b)=>a+b,0)/d.speeds.length).toFixed(1):'—';
+        return`<tr style="border-bottom:1px solid var(--border)">
+          <td style="padding:4px 8px;font-size:12px;color:var(--muted)">Zone ${z}</td>
+          <td style="padding:4px 8px;font-size:12px">${VEL_ZONES[+z]?.label||'?'}</td>
+          <td style="padding:4px 8px;text-align:center;font-weight:700;font-size:13px;color:${isStrike?'var(--blue)':'var(--red)'}">${d.count}</td>
+          <td style="padding:4px 8px;text-align:center;font-size:12px;color:var(--gold)">${avg}</td>
+        </tr>`;
+      }).join('');
+      return`<div style="margin-bottom:10px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:${isStrike?'var(--blue)':'var(--red)'};margin-bottom:4px">${type}</div>
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:var(--surface)">
+            <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted)">Zone</th>
+            <th style="padding:4px 8px;text-align:left;font-size:10px;color:var(--muted)">Location</th>
+            <th style="padding:4px 8px;text-align:center;font-size:10px;color:var(--muted)">Count</th>
+            <th style="padding:4px 8px;text-align:center;font-size:10px;color:var(--muted)">Avg MPH</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    return`<div class="row" style="margin-bottom:14px;gap:8px">
+      <button class="btn btn-dim" onclick="_velSession=null;_velPlayer='${esc(s.player)}';renderTab()">← Back</button>
+      <h2 class="st" style="margin:0">⚡ ${esc(s.player)} — ${esc(s.session)} (${s.date})</h2>
+      <div class="f1"></div>
+      <label class="btn btn-gold btn-sm">📥 Import CSV<input type="file" accept=".csv" class="hidden" onchange="importVelocityCSV(this)"></label>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+      ${[['Top',st.top,'var(--green)','MPH'],['Avg',st.avg,'var(--gold)','MPH'],['Low',st.low,'var(--muted)','MPH'],['Strike%',st.strikePct!==null?st.strikePct+'%':'—',st.strikePct>=65?'var(--green)':st.strikePct>=50?'var(--gold)':'var(--red)','of placed']].map(([l,v,c,sub])=>`
+      <div class="card" style="text-align:center;padding:12px 8px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:32px;color:${c};line-height:1">${v}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${l}</div>
+        <div style="font-size:9px;color:var(--dim)">${sub}</div>
+      </div>`).join('')}
+    </div>
+
+    <div style="margin-bottom:16px">
+      <div class="lbl" style="margin-bottom:6px">Pitch-by-Pitch Velocity (${st.count} pitches · red=top, gray=low)</div>
+      ${pitchChart}
+      <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:2px">
+        <span>Pitch 1</span><span>— avg ${st.avg} MPH</span><span>Pitch ${st.count}</span>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;margin-bottom:16px">
+      <div>${heatmap}</div>
+      <div style="flex:1;min-width:200px">${zoneTable}</div>
+    </div>
+
+    <div class="lbl" style="margin-bottom:8px">💡 Coach Insights</div>
+    ${insights||'<div style="color:var(--muted);font-size:12px">Not enough data for insights yet.</div>'}`;
+  }
+
+  // Player detail view
   const players=[...new Set(sessions.map(s=>s.player))].sort();
+  const activePlayer=_velPlayer||players[0];
+  const pSessions=sessions.filter(s=>s.player===activePlayer).sort((a,b)=>a.date.localeCompare(b.date));
+  const allPitches=pSessions.flatMap(s=>s.pitches);
+  const overall=velStats(allPitches);
+  const unit=pSessions[0]?.unit||'MPH';
 
-  // Per-player summary cards
-  const playerCards=players.map(player=>{
-    const pSessions=sessions.filter(s=>s.player===player).sort((a,b)=>a.date.localeCompare(b.date));
-    const allPitches=pSessions.flatMap(s=>s.pitches);
-    const overall=velStats(allPitches);
-    const unit=pSessions[0]?.unit||'MPH';
+  // Cross-session trend
+  const W=500,H=80,pad=10;
+  const avgs=pSessions.map(s=>+velStats(s.pitches).avg);
+  const tops=pSessions.map(s=>velStats(s.pitches).top);
+  const pcts=pSessions.map(s=>+velStats(s.pitches).strikePct||0);
+  const maxV=Math.max(...tops),minV=Math.min(...avgs.filter(Boolean))||0;
+  const rng=maxV-minV||1;
+  const xPos=i=>pad+i*(W-pad*2)/(Math.max(pSessions.length-1,1));
+  const yVel=v=>H-pad-(v-minV)/rng*(H-pad*2);
+  const avgLine=avgs.map((a,i)=>`${xPos(i)},${yVel(a)}`).join(' ');
+  const topLine=tops.map((t,i)=>`${xPos(i)},${yVel(t)}`).join(' ');
 
-    // Sparkline data — average per session
-    const sessionAvgs=pSessions.map(s=>({date:s.date,session:s.session,...velStats(s.pitches)}));
-    const maxSpd=Math.max(...sessionAvgs.map(s=>s.top));
-    const minSpd=Math.min(...sessionAvgs.map(s=>s.low));
-    const range=maxSpd-minSpd||1;
-    const W=280,H=60,pad=8;
-    const pts=sessionAvgs.map((s,i)=>{
-      const x=pad+i*(W-pad*2)/Math.max(sessionAvgs.length-1,1);
-      const y=H-pad-(s.avg-minSpd)/(range)*((H-pad*2));
-      return`${x},${y}`;
-    }).join(' ');
-    const topPts=sessionAvgs.map((s,i)=>{
-      const x=pad+i*(W-pad*2)/Math.max(sessionAvgs.length-1,1);
-      const y=H-pad-(s.top-minSpd)/(range)*((H-pad*2));
-      return`${x},${y}`;
-    }).join(' ');
+  const trendChart=pSessions.length>1?`<div style="margin-bottom:16px">
+    <div class="lbl" style="margin-bottom:6px">Velocity Trend — All Sessions</div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:70px;display:block;background:var(--navy);border-radius:8px">
+      ${avgs.length>1?`<polyline points="${avgLine}" fill="none" stroke="#f0a500" stroke-width="2" stroke-linejoin="round"/>`:''}
+      ${tops.length>1?`<polyline points="${topLine}" fill="none" stroke="#2a9d5c" stroke-width="1.5" stroke-dasharray="5,3" stroke-linejoin="round"/>`:''}
+      ${avgs.map((a,i)=>`<circle cx="${xPos(i)}" cy="${yVel(a)}" r="3" fill="#f0a500"/>
+        <text x="${xPos(i)}" y="${H-2}" text-anchor="middle" font-size="8" fill="#888">${pSessions[i].date.slice(0,5)}</text>`).join('')}
+    </svg>
+    <div style="display:flex;gap:14px;font-size:10px;color:var(--muted);margin-top:4px">
+      <span style="color:var(--gold)">—— avg per session</span>
+      <span style="color:var(--green)">- - top per session</span>
+    </div>
+  </div>`:
+  `<div style="color:var(--muted);font-size:12px;margin-bottom:14px;font-style:italic">Import more sessions to see velocity trends over time.</div>`;
 
-    const spark=sessionAvgs.length>1?`
-      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:60px;display:block;margin:8px 0">
-        <polyline points="${pts}" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linejoin="round"/>
-        <polyline points="${topPts}" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-dasharray="4,3" stroke-linejoin="round"/>
-        ${sessionAvgs.map((s,i)=>{
-          const x=pad+i*(W-pad*2)/Math.max(sessionAvgs.length-1,1);
-          const y=H-pad-(s.avg-minSpd)/(range)*((H-pad*2));
-          return`<circle cx="${x}" cy="${y}" r="3" fill="var(--gold)"/>`;
-        }).join('')}
-      </svg>
-      <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-bottom:8px">
-        <span style="color:var(--gold)">—— avg</span>
-        <span style="color:var(--green)">- - top</span>
-      </div>`:'<div style="color:var(--muted);font-size:12px;margin:10px 0">Only 1 session — import more to see trends</div>';
-
-    const sessionRows=pSessions.map(s=>{
-      const st=velStats(s.pitches);
-      return`<div style="display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
-        <div style="color:var(--muted);min-width:70px">${s.date}</div>
-        <div style="flex:1;color:var(--text)">${esc(s.session)}</div>
-        <div style="color:var(--green);font-weight:700;min-width:40px">▲ ${st.top}</div>
-        <div style="color:var(--gold);font-weight:700;min-width:40px">⌀ ${st.avg}</div>
-        <div style="color:var(--muted);min-width:40px">↓ ${st.low}</div>
-        <div style="color:var(--muted)">${st.count} pitches</div>
-        <button class="btn btn-red btn-xs" onclick="delVelSession('${sessions.indexOf(pSessions[0])>-1?s.id:''}','${esc(s.id)}')">✕</button>
-      </div>`;
-    }).join('');
-
-    // Pitch distribution bar chart
-    const speeds=allPitches.map(p=>p.speed);
-    const distCounts={};
-    speeds.forEach(s=>distCounts[s]=(distCounts[s]||0)+1);
-    const maxCount=Math.max(...Object.values(distCounts),1);
-    const distBars=Object.keys(distCounts).sort((a,b)=>+a-+b).map(spd=>{
-      const pct=Math.round((distCounts[spd]/maxCount)*100);
-      const color=+spd>=overall.top-1?'var(--green)':+spd>=+overall.avg-1?'var(--gold)':'var(--muted)';
-      return`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">
-        <div style="font-size:10px;min-width:28px;text-align:right;color:var(--muted)">${spd}</div>
-        <div style="flex:1;background:var(--surface);border-radius:3px;height:12px">
-          <div style="background:${color};height:100%;border-radius:3px;width:${pct}%"></div>
-        </div>
-        <div style="font-size:10px;color:var(--muted);min-width:20px">${distCounts[spd]}</div>
-      </div>`;
-    }).join('');
-
-    // Find matching roster player
-    const rp=DB.players.find(p=>p.name===player||p.name.toLowerCase().includes(player.split(' ')[0].toLowerCase()));
-
-    return`<div class="card" style="margin-bottom:16px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
-        <div style="font-size:28px">⚾</div>
-        <div>
-          <div style="font-weight:800;font-size:16px">${esc(player)}</div>
-          <div style="font-size:11px;color:var(--muted)">${pSessions.length} session${pSessions.length>1?'s':''} · ${allPitches.length} total pitches</div>
-        </div>
-        <div class="f1"></div>
-        <div style="text-align:right">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:36px;color:var(--green);line-height:1">${overall.top}</div>
-          <div style="font-size:10px;color:var(--muted)">top ${unit}</div>
-        </div>
-        <div style="text-align:right">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:28px;color:var(--gold);line-height:1">${overall.avg}</div>
-          <div style="font-size:10px;color:var(--muted)">avg ${unit}</div>
-        </div>
+  // Session list
+  const sessionList=pSessions.slice().reverse().map(s=>{
+    const st=velStats(s.pitches);
+    const stPctColor=!st.strikePct?'var(--muted)':+st.strikePct>=65?'var(--green)':+st.strikePct>=50?'var(--gold)':'var(--red)';
+    return`<div style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;border:1px solid var(--border);margin-bottom:8px;cursor:pointer;background:var(--surface)"
+      onclick="_velSession='${s.id}';renderTab()">
+      <div style="flex:1">
+        <div style="font-weight:700;font-size:13px">${esc(s.session)} <span style="color:var(--muted);font-weight:400;font-size:11px">${s.date}</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${st.count} pitches</div>
       </div>
-      ${spark}
-      <div class="row" style="gap:16px;align-items:flex-start">
-        <div style="flex:2">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Sessions</div>
-          ${sessionRows}
-        </div>
-        <div style="flex:1;min-width:120px">
-          <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Speed Distribution</div>
-          ${distBars}
-        </div>
+      <div style="text-align:center;min-width:50px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;color:var(--green)">${st.top}</div>
+        <div style="font-size:9px;color:var(--muted)">top</div>
       </div>
+      <div style="text-align:center;min-width:50px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;color:var(--gold)">${st.avg}</div>
+        <div style="font-size:9px;color:var(--muted)">avg</div>
+      </div>
+      <div style="text-align:center;min-width:50px">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:22px;color:${stPctColor}">${st.strikePct!==null?st.strikePct+'%':'—'}</div>
+        <div style="font-size:9px;color:var(--muted)">strikes</div>
+      </div>
+      <button class="btn btn-red btn-xs" onclick="event.stopPropagation();delVelSession('${s.id}')">✕</button>
+      <span style="color:var(--muted);font-size:18px">›</span>
     </div>`;
   }).join('');
 
-  return`<div class="row" style="margin-bottom:18px">
+  // Player tabs
+  const playerTabs=players.map(p=>`<button class="tog${p===activePlayer?' on':''}" onclick="_velPlayer='${esc(p)}';_velSession=null;renderTab()">${esc(p.split(' ')[0])}</button>`).join('');
+
+  return`<div class="row" style="margin-bottom:14px;gap:8px;flex-wrap:wrap">
     <h2 class="st">⚡ Velocity Tracker</h2><div class="f1"></div>
-    <button class="btn btn-red btn-sm" onclick="if(!confirm('Clear all velocity sessions?'))return;DB.velocitySessions=[];scheduleSave();renderTab()">🗑 Clear All</button>
-    &nbsp;<label class="btn btn-gold">📥 Import Pocket Radar CSV<input type="file" accept=".csv" class="hidden" onchange="importVelocityCSV(this)"></label>
+    <button class="btn btn-red btn-sm" onclick="if(!confirm('Clear ALL velocity data?'))return;DB.velocitySessions=[];_velPlayer=null;_velSession=null;scheduleSave();renderTab()">🗑 Clear All</button>
+    &nbsp;<label class="btn btn-gold btn-sm">📥 Import CSV<input type="file" accept=".csv" class="hidden" onchange="importVelocityCSV(this)"></label>
   </div>
-  <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Import session CSVs from the Pocket Radar app. Each file can contain multiple players. Sessions are tracked over time so you can spot velocity trends.</div>
-  ${playerCards}`;
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">${playerTabs}</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+    ${[['Career Top',overall.top,'var(--green)','MPH all sessions'],['Career Avg',overall.avg,'var(--gold)','MPH all sessions'],['Total Pitches',overall.count,'var(--blue)','recorded'],['Sessions',pSessions.length,'var(--muted)','imported']].map(([l,v,c,sub])=>`
+    <div class="card" style="text-align:center;padding:12px 8px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:32px;color:${c};line-height:1">${v}</div>
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">${l}</div>
+      <div style="font-size:9px;color:var(--dim)">${sub}</div>
+    </div>`).join('')}
+  </div>
+  ${trendChart}
+  <div class="lbl" style="margin-bottom:8px">Sessions — click any to see full analysis</div>
+  ${sessionList}`;
 }
 
-function delVelSession(dummy, id){
+function delVelSession(id){
   if(!id)return;
   DB.velocitySessions=(DB.velocitySessions||[]).filter(s=>s.id!==id);
+  if(_velSession===id)_velSession=null;
   scheduleSave();renderTab();
 }
 
@@ -1822,7 +2009,7 @@ function emailPlan(id){
       t+='\n───────────────────────────────\n\n';
     }
   });
-  t+='Generated by ⚡ HAMR Softball Hub';
+  t+='Generated by ⚡ HAMR Fall 26 Hub';
   window.open(`mailto:?subject=${encodeURIComponent('Practice Plan: '+(p.title||'Untitled')+' — '+p.date)}&body=${encodeURIComponent(t)}`);
 }
 
@@ -1952,7 +2139,7 @@ ${checkHtml}
 ${setupHtml}
 ${coachTipsHtml}
 
-<div style="margin-top:16px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:6px;text-align:center">⚡ HAMR Softball Hub — Coach Sheet</div>
+<div style="margin-top:16px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:6px;text-align:center">⚡ HAMR Fall 26 Hub — Coach Sheet</div>
 <\/body><\/html>`;
 
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
@@ -2087,7 +2274,7 @@ ${(()=>{
 })()}
 <div class="shdr">📋 Full Practice Plan</div>
 ${frows}
-<div class="footer">⚡ HAMR Softball Hub · HAMR Hawks</div>
+<div class="footer">⚡ HAMR Fall 26 Hub · HAMR Hawks</div>
 <\/body><\/html>`;
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
@@ -2320,7 +2507,7 @@ function emailHomework(pid){
 
   <!-- Header -->
   <div style="background:#0b0f1a;border-radius:14px;padding:22px 26px;margin-bottom:28px">
-    <div style="font-size:26px;font-weight:900;color:#f0a500;letter-spacing:2px;margin-bottom:4px">⚡ HAMR Softball Hub</div>
+    <div style="font-size:26px;font-weight:900;color:#f0a500;letter-spacing:2px;margin-bottom:4px">⚡ HAMR Fall 26 Hub</div>
     <div style="color:#7b88a8;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.8px">HAMR Hawks &middot; 12U</div>
   </div>
 
@@ -2346,7 +2533,7 @@ function emailHomework(pid){
   <!-- Footer -->
   <div style="margin-top:36px;padding-top:16px;border-top:2px solid #f0a500;text-align:center">
     <div style="font-size:13px;font-weight:700;color:#1a1a1a;margin-bottom:4px">Coach &mdash; HAMR Hawks 12U</div>
-    <div style="font-size:11px;color:#aaa">Generated by ⚡ HAMR Softball Hub</div>
+    <div style="font-size:11px;color:#aaa">Generated by ⚡ HAMR Fall 26 Hub</div>
   </div>
 
 <\/body>
@@ -3531,7 +3718,7 @@ ${(()=>{
   </div>`;
 })()}
 
-<div style="margin-top:16px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:6px">Generated by ⚡ HAMR Softball Hub</div>
+<div style="margin-top:16px;font-size:10px;color:#bbb;border-top:1px solid #eee;padding-top:6px">Generated by ⚡ HAMR Fall 26 Hub</div>
 <\/body><\/html>`;
 
   const blob=new Blob([html],{type:'text/html;charset=utf-8'});
@@ -3676,6 +3863,96 @@ function showPT(){
 
 // ═══ STATS ═══════════════════════════════════════════════
 
+function clearSeasonStats(){
+  const _sf=window._statSeasonFilter||'All Seasons';
+  const msg=_sf==='All Seasons'?'Clear ALL stats from ALL seasons?':`Clear all ${_sf} stats?`;
+  if(!confirm(msg))return;
+  if(_sf==='All Seasons')DB.gcStats=[];
+  else DB.gcStats=(DB.gcStats||[]).filter(r=>r._season!==_sf);
+  scheduleSave();renderTab();
+}
+
+function showSeasonMgr(){
+  const seasons=[...new Set((DB.gcStats||[]).map(r=>r._season).filter(Boolean))].sort();
+  const cur=DB.currentSeason||'Fall 2026';
+  const rows=seasons.map(s=>{
+    const count=(DB.gcStats||[]).filter(r=>r._season===s).length;
+    return`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;font-weight:${s===cur?700:400}">${esc(s)}${s===cur?' <span style="color:var(--green);font-size:11px">(current)</span>':''}</div>
+      <div style="font-size:12px;color:var(--muted)">${count} stat rows</div>
+      <button class="btn btn-dim btn-xs" onclick="window._statSeasonFilter='${esc(s)}';closeModal();renderTab()">View</button>
+    </div>`;
+  }).join('');
+
+  showModal(mhdr('📅 Season Manager')+`
+    <div style="margin-bottom:14px">
+      <div class="lbl">Current Season (new stat imports tagged as)</div>
+      <div class="row" style="gap:8px">
+        <input id="cur-season-inp" value="${esc(cur)}" style="flex:1" placeholder="e.g. Fall 2026"/>
+        <button class="btn btn-gold" onclick="DB.currentSeason=document.getElementById('cur-season-inp').value.trim();if(!DB.seasons)DB.seasons=[];if(!DB.seasons.includes(DB.currentSeason))DB.seasons.push(DB.currentSeason);scheduleSave();closeModal();renderTab()">Save</button>
+      </div>
+    </div>
+    <div class="lbl" style="margin-bottom:8px">Seasons with Stats</div>
+    ${rows||'<div style="color:var(--muted);font-size:13px;font-style:italic">No stats imported yet.</div>'}
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="lbl" style="margin-bottom:6px">Import Stats from a Previous Season</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Select a GameChanger CSV from a previous season. You'll be asked which season to tag those stats as before they're added.</div>
+      <label class="btn btn-blue btn-sm">📂 Import Previous Season CSV<input type="file" accept=".csv" class="hidden" onchange="importPrevSeasonCSV(this)"></label>
+    </div>
+  `);
+}
+
+function importPrevSeasonCSV(input){
+  const file=input.files[0];if(!file)return;
+  const seasonName=prompt('What season is this CSV from? (e.g. Spring 2026)','Spring 2026');
+  if(!seasonName)return;
+  // Temporarily override current season for this import
+  const origSeason=DB.currentSeason;
+  DB.currentSeason=seasonName.trim();
+  // Re-use the existing import handler
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    // Patch the file into handleStatsCSV logic inline
+    const rows=parseCSV(ev.target.result);
+    const lbl=`${seasonName} Import`;
+    const dt=new Date().toISOString().slice(0,10);
+    const mapped=rows.map(row=>{
+      const fn=(row['First']||'').trim();const ln=(row['Last']||'').trim();
+      const rawName=(fn&&ln)?`${fn} ${ln}`:(row['Player Name']||row['Name']||'').trim();
+      const norm=s=>s.toLowerCase().replace(/[^a-z\s]/g,'').replace(/\s+/g,' ').trim();
+      const normRaw=norm(rawName);
+      const matched=DB.players.find(p=>{
+        const normP=norm(p.name);
+        if(normP===normRaw)return true;
+        const parts=normRaw.split(' '),pParts=normP.split(' ');
+        if(parts.length>=2&&pParts.length>=2){
+          if(pParts[pParts.length-1]===parts[parts.length-1]&&(pParts[0]===parts[0]||pParts[0][0]===parts[0][0]))return true;
+        }
+        if(pParts[pParts.length-1]===normRaw)return true;
+        const jersey=row['#']||row['Jersey']||row['Number']||'';
+        if(jersey&&p.number&&jersey.trim()===p.number.trim())return true;
+        return false;
+      });
+      return{...row,_playerId:matched?.id||null,_rawName:rawName,_label:lbl,_date:dt,_season:seasonName.trim()};
+    });
+    DB.currentSeason=origSeason;
+    window._pendingStats=mapped;
+    closeModal();
+    const matched=mapped.filter(r=>r._playerId).length;
+    showModal(mhdr(`📂 Import: ${esc(seasonName)}`)+`<div style="padding:16px">
+      <div style="color:var(--green);font-weight:700;margin-bottom:8px">${mapped.length} rows parsed — ${matched} matched to roster</div>
+      ${mapped.filter(r=>!r._playerId).length?`<div style="font-size:12px;color:var(--red);margin-bottom:8px">⚠ ${mapped.filter(r=>!r._playerId).length} unmatched</div>`:''}
+      <div style="font-size:13px;margin-bottom:14px">These stats will be tagged as <strong>${esc(seasonName)}</strong>.</div>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-gold" onclick="confirmStats()">✓ Import as ${esc(seasonName)}</button>
+        <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
+      </div>
+    </div>`);
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
 function exportForClaude(){
   const all=DB.gcStats||[];
   if(!all.length){alert('Import stats first.');return;}
@@ -3703,7 +3980,7 @@ function exportForClaude(){
     return `#${p.number||'?'} ${p.name}\n${lines.join('\n')}`;
   }).filter(Boolean);
 
-  const prompt=`You are an expert 12U youth softball coach analyst. Analyze these stats for my team, the HAMR Hippos, and provide:\n\n1. TEAM OVERVIEW — overall offensive, pitching, and fielding health\n2. STANDOUT PERFORMERS — 3-4 players excelling and why (with specific numbers)\n3. DEVELOPING PLAYERS — 2-3 players with upside, constructive and encouraging\n4. OFFENSIVE ANALYSIS — plate discipline, who gets on base vs drives runs, batting order suggestions (I think in two waves of 1-7)\n5. PITCHING ANALYSIS — ERA, WHIP, control, staff depth\n6. FIELDING ANALYSIS — fielding %, errors, positional versatility\n7. COACHING RECOMMENDATIONS — 4-5 specific data-driven practice focus areas\n\nKeep tone positive and encouraging. Use first names only. Be specific with numbers.\n\nTEAM STATS:\n${players.join('\n\n')}`;
+  const prompt=`You are an expert 12U youth softball coach analyst. Analyze these stats for my team, the HAMR Hippos Fall 26, and provide:\n\n1. TEAM OVERVIEW — overall offensive, pitching, and fielding health\n2. STANDOUT PERFORMERS — 3-4 players excelling and why (with specific numbers)\n3. DEVELOPING PLAYERS — 2-3 players with upside, constructive and encouraging\n4. OFFENSIVE ANALYSIS — plate discipline, who gets on base vs drives runs, batting order suggestions (I think in two waves of 1-7)\n5. PITCHING ANALYSIS — ERA, WHIP, control, staff depth\n6. FIELDING ANALYSIS — fielding %, errors, positional versatility\n7. COACHING RECOMMENDATIONS — 4-5 specific data-driven practice focus areas\n\nKeep tone positive and encouraging. Use first names only. Be specific with numbers.\n\nTEAM STATS:\n${players.join('\n\n')}`;
 
   navigator.clipboard.writeText(prompt).then(()=>{
     showModal(`${mhdr('🤖 Analyze with Claude')}
@@ -3779,12 +4056,18 @@ function fmtStat(val,col,pctCols){
 }
 
 function renderStats(){
-  const all=DB.gcStats||[];
+  const _sf=window._statSeasonFilter||'All Seasons';
+  const all=(_sf==='All Seasons'?DB.gcStats||[]:(DB.gcStats||[]).filter(r=>r._season===_sf));
+  const allSeasons=[...new Set((DB.gcStats||[]).map(r=>r._season).filter(Boolean))].sort();
+  const seasonSel=allSeasons.length>0?`<select onchange="window._statSeasonFilter=this.value;renderTab()" style="font-size:13px;padding:4px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border)">
+    ${['All Seasons',...allSeasons].map(s=>`<option value="${esc(s)}"${s===_sf?' selected':''}>${esc(s)}</option>`).join('')}
+  </select>`:'';
   if(all.length===0){
-    return `<div class="row" style="margin-bottom:18px"><h2 class="st">📊 Stats</h2><div class="f1"></div>
+    return `<div class="row" style="margin-bottom:18px;flex-wrap:wrap;gap:8px"><h2 class="st">📊 Stats</h2>${seasonSel}<div class="f1"></div>
+      <button class="btn btn-dim btn-sm" onclick="showSeasonMgr()">📅 Seasons</button>
       <button class="btn btn-gold" onclick="showStatsImport()">📥 Import GameChanger CSV</button>
     </div>
-    <div class="empty">No stats imported yet. Export from GameChanger and import the CSV.</div>`;
+    <div class="empty">No stats imported yet for ${esc(_sf)}. Export from GameChanger and import the CSV.</div>`;
   }
 
   const cfg=STAT_COLS[_statTab];
@@ -3860,11 +4143,15 @@ function renderStats(){
 
   const unmatched=all.filter(r=>!r._playerId);
 
-  return `<div class="row" style="margin-bottom:14px">
-    <h2 class="st">📊 Stats</h2><div class="f1"></div>
+  return `<div class="row" style="margin-bottom:14px;flex-wrap:wrap;gap:8px">
+    <h2 class="st">📊 Stats</h2>
+    ${seasonSel}
+    <div class="f1"></div>
     <button class="btn btn-blue btn-sm" onclick="exportForClaude()">🤖 Analyze with Claude</button>
-    &nbsp;<button class="btn btn-dim btn-sm" onclick="DB.gcStats=[];scheduleSave();renderTab()">🗑 Clear</button>
-    &nbsp;<button class="btn btn-gold" onclick="showStatsImport()">📥 Import CSV</button>
+    &nbsp;<button class="btn btn-dim btn-sm" onclick="showSeasonMgr()">📅 Seasons</button>
+    &nbsp;<button class="btn btn-dim btn-sm" onclick="clearSeasonStats()">🗑 Clear</button>
+    &nbsp;<button class="btn btn-gold btn-sm" onclick="showStatsImport()">📥 Import CSV</button>
+  </div>
   </div>
   <div class="row" style="gap:6px;margin-bottom:12px">${tabBtns}</div>
   <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Click any column header to sort. Gold = rate stats.</div>
@@ -3925,7 +4212,7 @@ function handleStatsCSV(input){
         if(jersey&&p.number&&jersey.trim()===p.number.trim())return true;
         return false;
       });
-      return{...row,_playerId:matched?.id||null,_rawName:rawName,_label:lbl,_date:dt};
+      return{...row,_playerId:matched?.id||null,_rawName:rawName,_label:lbl,_date:dt,_season:DB.currentSeason||'Fall 2026'};
     });
     document.getElementById('stats-preview').innerHTML=`
       <div style="color:var(--green);font-weight:700;margin-bottom:8px">${mapped.length} rows parsed — ${mapped.filter(r=>r._playerId).length} matched to roster</div>
