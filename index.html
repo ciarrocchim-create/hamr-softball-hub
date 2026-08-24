@@ -1536,12 +1536,12 @@ function importPlans(input){
   const reader=new FileReader();
   reader.onload=e=>{
     try{
-      const plans=JSON.parse(e.target.result);
-      if(!Array.isArray(plans))throw new Error('Invalid format — expected an array of plans');
-      const existingIds=new Set(DB.plans.map(p=>p.id));
-      // Give each imported plan a fresh ID to avoid collisions
-      const toAdd=plans.map(p=>({...p,id:uid(),title:(existingIds.has(p.id)?p.title:p.title)}))
-        .filter(p=>p.title||p.items?.length); // skip completely empty plans
+      const data=JSON.parse(e.target.result);
+      // Accept either a raw array of plans OR a full hub backup object
+      let plans=Array.isArray(data)?data:data.plans;
+      if(!plans||!Array.isArray(plans))throw new Error('No plans found in this file');
+      const toAdd=plans.map(p=>({...p,id:uid()}))
+        .filter(p=>p.title||p.items?.length);
       DB.plans=[...DB.plans,...toAdd];
       scheduleSave();renderTab();
       showModal(mhdr('📂 Plans Imported')+`<div style="text-align:center;padding:20px">
