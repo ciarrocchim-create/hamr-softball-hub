@@ -520,7 +520,7 @@ function updateCounts(){
 
 // ═══ MODAL ══════════════════════════════════════════════
 function showModal(html,wide=false){
-  document.getElementById('modal').innerHTML=`<div class="overlay" onclick="maybeClose(event)"><div class="mbox${wide?' wide':''}" onclick="event.stopPropagation()">${html}</div></div>`;
+  document.getElementById('modal').innerHTML=`<div class="overlay"><div class="mbox${wide?' wide':''}" onclick="event.stopPropagation()">${html}</div></div>`;
 }
 function closeModal(){document.getElementById('modal').innerHTML='';}
 function maybeClose(e){if(e.target.classList.contains('overlay'))closeModal();}
