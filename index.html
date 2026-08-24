@@ -2400,7 +2400,7 @@ function renderSkills(){
   }).filter(r=>r.s>0).sort((a,b)=>b.s-a.s);
 
   const today=new Date();
-  const pList=DB.players.map(p=>{const e=getE(p.id);const on=p.id===_skillPid;
+  const pList=DB.players.filter(p=>p.active!==false).map(p=>{const e=getE(p.id);const on=p.id===_skillPid;
     const lastSent=e.lastSent||null;
     const daysSince=lastSent?Math.floor((today-new Date(lastSent))/(1000*60*60*24)):null;
     const overdue=daysSince!==null&&daysSince>14;
@@ -2451,12 +2451,12 @@ function renderSkills(){
   }).join('');
 
   // Count overdue players (have skills, haven't been sent in 14+ days)
-  const overdueCount=DB.players.filter(p=>{
+  const overdueCount=DB.players.filter(p=>p.active!==false).filter(p=>{
     const e=getE(p.id);if(!e.skills.length)return false;
     if(!e.lastSent)return true;
     return Math.floor((today-new Date(e.lastSent))/(1000*60*60*24))>14;
   }).length;
-  const neverSentCount=DB.players.filter(p=>{const e=getE(p.id);return e.skills.length&&!e.lastSent;}).length;
+  const neverSentCount=DB.players.filter(p=>p.active!==false).filter(p=>{const e=getE(p.id);return e.skills.length&&!e.lastSent;}).length;
 
   return `<div class="row" style="margin-bottom:18px"><h2 class="st">⭐ Player Skills</h2><div class="f1"></div>
     ${overdueCount>0?`<span class="badge" style="background:var(--red)22;color:var(--red);border:1px solid var(--red)44">⚠ ${overdueCount} player${overdueCount!==1?'s':''} overdue for homework</span>`:''}
@@ -2688,7 +2688,7 @@ let _SW={on:false,metric:null,pid:'',elapsed:0,start:0,saved:null,log:[],raf:nul
 function renderDev(){
   const el=document.getElementById('main');if(!el)return;
   const mdef=METRIC_TYPES.find(m=>m.key===_devM)||METRIC_TYPES[0];
-  const lb=DB.players.map(p=>{
+  const lb=DB.players.filter(p=>p.active!==false).map(p=>{
     const ents=DB.metrics.filter(m=>m.playerId===p.id&&m.metricKey===_devM).sort((a,b)=>b.date.localeCompare(a.date));
     const lat=ents[0]||null,prev=ents[1]||null;
     return{p,lat,delta:(lat&&prev)?lat.value-prev.value:null,cnt:ents.length};
@@ -2766,7 +2766,7 @@ function delMetric(id){DB.metrics=DB.metrics.filter(m=>m.id!==id);scheduleSave()
 
 function openManual(mk){
   const mOpts=METRIC_TYPES.map(m=>`<option value="${m.key}"${m.key===mk?' selected':''}>${m.label} (${m.unit})</option>`).join('');
-  const pOpts=DB.players.map(p=>`<option value="${p.id}"${p.id===_devPid?' selected':''}>#${esc(p.number||'—')} ${esc(p.name)}</option>`).join('');
+  const pOpts=DB.players.filter(p=>p.active!==false).map(p=>`<option value="${p.id}"${p.id===_devPid?' selected':''}>#${esc(p.number||'—')} ${esc(p.name)}</option>`).join('');
   showModal(`${mhdr('Log Measurement')}
     <div class="col">
       <div><div class="lbl">Player</div><select id="m-p">${pOpts}</select></div>
@@ -2800,7 +2800,7 @@ function showSW(){
   const s=Math.floor(_SW.elapsed/1000),ms=Math.floor((_SW.elapsed%1000)/10);
   const t=`${s}.${String(ms).padStart(2,'0')}`;
   const tcol=_SW.on?'var(--green)':_SW.saved!==null?'var(--gold)':'var(--text)';
-  const chips=DB.players.map(p=>`<div class="pchip${p.id===_SW.pid?' on':''}" onclick="${_SW.on?'':`_SW.pid='${p.id}';showSW()`}">
+  const chips=DB.players.filter(p=>p.active!==false).map(p=>`<div class="pchip${p.id===_SW.pid?' on':''}" onclick="${_SW.on?'':`_SW.pid='${p.id}';showSW()`}">
     <div style="font-size:10px;color:${p.id===_SW.pid?'#000':'var(--muted)'}">#${esc(p.number||'—')}</div>
     <div>${esc(p.name.split(' ')[0])}</div>
   </div>`).join('');
