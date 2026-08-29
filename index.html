@@ -445,10 +445,11 @@ async function gistLoad(gid,token){
   try{data=JSON.parse(file.content||'{}');}catch(e){data={};}
   const merged=Object.assign({},BLANK_DB,data);
   if(!merged.drills||merged.drills.length===0){
-    merged.drills=SEED_DRILLS.map(d=>({...d})); // id already set in seed
+    merged.drills=SEED_DRILLS.map(d=>({...d})); // id already set in seed — only runs on fresh install
   } else {
+    // Do NOT re-add seed drills — respect user deletions
     const names=new Set(merged.drills.map(d=>d.name));
-    const newD=SEED_DRILLS.filter(d=>!names.has(d.name));
+    const newD=[];// removed: was re-adding deleted drills on every update
     if(newD.length)merged.drills=[...merged.drills,...newD];
     // Also fix any existing drills whose IDs don't match seed — restore stable IDs
     const seedById=Object.fromEntries(SEED_DRILLS.map(d=>[d.name,d.id]));
