@@ -1474,7 +1474,7 @@ function editDrill(id){
         <div class="f1"><div class="lbl">Category</div><select id="dc">${catOpts}</select></div>
         <div style="width:150px"><div class="lbl">Type</div><select id="dty">${typeOpts}</select></div>
       </div>
-      <div><div class="lbl">URL (YouTube or link)</div><input id="du" value="${esc(d.url||'')}" placeholder="https://youtube.com/watch?v=…"/></div>
+      <div><div class="lbl">URL (YouTube or link)</div><input id="du" value="${esc(d.url||'')}" placeholder="https://youtube.com/watch?v=…" oninput="autoFillFromYT(this.value)" onpaste="setTimeout(()=>autoFillFromYT(document.getElementById('du').value),50)"/><div id="yt-fetch-status"></div></div>
       <div><div class="lbl">Description / Coaching Cues</div><textarea id="dd" rows="5" placeholder="Setup, progressions, coaching cues…">${esc(d.description||'')}</textarea></div>
       <div><div class="lbl">Skills &amp; Tags (comma-separated)</div><input id="dt" value="${esc(d.tags||'')}" placeholder="footwork, casting, drop step, daily…"/></div>
       <div class="row">
@@ -4453,6 +4453,112 @@ document.addEventListener('keydown',function(e){
     if(modal&&modal.innerHTML.trim())closeModal();
   }
 });
+
+async function autoFillFromYT(url){
+  if(!url)return;
+  if(!/youtu(be\.com|\.be)/i.test(url))return;
+  const statusEl=document.getElementById('yt-fetch-status');
+  if(statusEl)statusEl.innerHTML='<div style="color:var(--muted);font-size:11px;margin-top:4px">⏳ Fetching video info…</div>';
+
+  let title='',author='';
+  try{
+    const resp=await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`);
+    if(!resp.ok)throw new Error('Not found');
+    const data=await resp.json();
+    title=data.title||'';author=data.author_name||'';
+  }catch(e){
+    if(statusEl)statusEl.innerHTML='<div style="color:var(--red);font-size:11px;margin-top:4px">Could not fetch video — check the URL</div>';
+    return;
+  }
+
+  const nameEl=document.getElementById('dn');
+  if(nameEl&&!nameEl.value)nameEl.value=title;
+
+  const vid=ytId(url);
+  if(statusEl&&vid){
+    statusEl.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-top:6px;padding:8px;background:var(--navy);border-radius:8px">
+      <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:80px;border-radius:6px;flex-shrink:0"/>
+      <div>
+        <div style="font-weight:700;font-size:12px;color:var(--text)">${esc(title)}</div>
+        <div style="font-size:11px;color:var(--muted)">${esc(author)}</div>
+        <div style="font-size:10px;color:var(--gold);margin-top:4px">🤖 Analyzing fields…</div>
+      </div>
+    </div>`;
+  }
+
+  if(DB.anthropicKey){
+    try{
+      const prompt=`You are a softball coaching expert. Given this YouTube video title and channel, fill in the drill details for a 12U girls softball coaching app.
+
+Title: "${title}"
+Channel: "${author}"
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "category": one of [Hitting,Pitching,Fielding,Infield,Outfield,Catching,Baserunning,Conditioning,Motivation,Warmup,Other],
+  "drillType": one of [Drill,Tip,Warmup,Progression,Motivation],
+  "tags": "4-8 relevant softball skill tags, comma-separated, lowercase",
+  "description": "2-3 sentence coaching description: what it teaches, how to set it up, what to look for. Written for a youth softball coach."
+}`;
+      const r=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':DB.anthropicKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})
+      });
+      if(r.ok){
+        const d=await r.json();
+        const text=(d.content?.[0]?.text||'').replace(/```json|```/g,'').trim();
+        _applyYTFields(JSON.parse(text),statusEl,vid,title,author,true);
+        return;
+      }
+    }catch(e){/* fall through */}
+  }
+
+  // Keyword inference fallback
+  const t=title.toLowerCase();
+  const category=
+    /pitch|windmill|fastball|changeup|curveball|riseball|dropball/.test(t)?'Pitching':
+    /infield|ground ball|grounder|shortstop|double play/.test(t)?'Infield':
+    /outfield|fly ball|pop fly|tracking|drop step/.test(t)?'Outfield':
+    /catch|block|framing|throwing down/.test(t)?'Catching':
+    /hit|swing|bat|bunt|tee|slap|batting/.test(t)?'Hitting':
+    /baserun|steal|lead|slide|running the bases/.test(t)?'Baserunning':
+    /condition|speed|agility|strength|ladder/.test(t)?'Conditioning':
+    /warmup|stretch|arm care|long toss/.test(t)?'Warmup':
+    /field|glove|transfer|throwing|arm/.test(t)?'Fielding':'Other';
+
+  const drillType=
+    /warmup|stretch/.test(t)?'Warmup':
+    /tip|key|secret|trick/.test(t)?'Tip':
+    /progression|series|part \d|step \d/.test(t)?'Progression':'Drill';
+
+  const tagWords=title.toLowerCase().replace(/[^a-z\s]/g,' ').split(/\s+/)
+    .filter(w=>w.length>3&&!['with','this','your','that','from','have','will','for','the','and','how','drill','youth','girls','softball'].includes(w));
+  const tags=[...new Set(tagWords)].slice(0,6).join(', ');
+  const desc=`${title} — a ${category.toLowerCase()} drill for youth softball. Review this video before practice to understand the setup and key teaching points. Focus on proper mechanics and positive repetitions.`;
+
+  _applyYTFields({category,drillType,tags,description:desc},statusEl,vid,title,author,false);
+}
+
+function _applyYTFields(fields,statusEl,vid,title,author,usedAI){
+  const catEl=document.getElementById('dc');
+  const typeEl=document.getElementById('dt');
+  const tagsEl=document.getElementById('dtags');
+  const descEl=document.getElementById('dd');
+  if(catEl&&fields.category)[...catEl.options].forEach(o=>{if(o.value===fields.category)o.selected=true;});
+  if(typeEl&&fields.drillType)[...typeEl.options].forEach(o=>{if(o.value===fields.drillType)o.selected=true;});
+  if(tagsEl&&!tagsEl.value&&fields.tags)tagsEl.value=fields.tags;
+  if(descEl&&!descEl.value&&fields.description)descEl.value=fields.description;
+  if(statusEl&&vid)statusEl.innerHTML=`<div style="display:flex;align-items:center;gap:10px;margin-top:6px;padding:8px;background:var(--navy);border-radius:8px">
+    <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:80px;border-radius:6px;flex-shrink:0"/>
+    <div>
+      <div style="font-weight:700;font-size:12px;color:var(--text)">${esc(title)}</div>
+      <div style="font-size:11px;color:var(--muted)">${esc(author)}</div>
+      <div style="font-size:10px;color:var(--green);margin-top:4px">✓ Fields filled ${usedAI?'with AI':'from keywords'} — review and adjust as needed</div>
+    </div>
+  </div>`;
+}
+
 </script>
 </body>
 </html>
