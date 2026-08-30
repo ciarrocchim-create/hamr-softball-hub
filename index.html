@@ -2102,7 +2102,7 @@ function viewPlan(id){
       <button class="btn btn-dim btn-sm" onclick="emailPlan('${id}')">✉ Email</button>
       <button class="btn btn-dim btn-sm" onclick="reorderPlanItems()">↕ Reorder</button>
       <button class="btn btn-green btn-sm" onclick="showPracticeMode('${id}')">📱 Practice Mode</button>
-      <button class="btn btn-blue btn-sm" onclick="dlCoachSheet('${id}')">📋 Coach Sheet</button>
+      <button class="btn btn-blue btn-sm" onclick="dlCoachSheet('${id}')">🖨 Download Coach Guide</button>
       <button class="btn btn-gold btn-sm" onclick="dlPlan('${id}')">🖨 Download</button>
     </div>
     ${p.notes?`<div style="background:var(--surface);border-radius:8px;padding:12px;margin-bottom:16px;border-left:4px solid var(--gold);font-size:13px;color:var(--muted);line-height:1.7">${esc(p.notes)}</div>`:''}
@@ -4788,6 +4788,13 @@ body.readonly button[onclick*="import"],
 body.readonly button[onclick*="export"],
 body.readonly button[onclick*="showSettings"],
 body.readonly button[onclick*="showSync"],
+body.readonly button[onclick*="archive"],
+body.readonly button[onclick*="Archive"],
+body.readonly button[onclick*="reorder"],
+body.readonly button[onclick*="Reorder"],
+body.readonly button[onclick*="openNewPlan"],
+body.readonly button[onclick*="openPlanEdit"],
+body.readonly button[onclick*="delPlan"],
 body.readonly label.btn,
 body.readonly .nav-btn-group { display:none!important; }
 body.readonly #readonly-banner { display:block!important; }
