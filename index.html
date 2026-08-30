@@ -4466,6 +4466,42 @@ function deleteJoke(idx){
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
+  // Read-only mode: ?readonly=true&gist=GISTID
+  const _params=new URLSearchParams(window.location.search);
+  const _readonly=_params.get('readonly')==='true';
+  const _gistParam=_params.get('gist')||'';
+
+  if(_readonly&&_gistParam){
+    // Load Gist publicly (no token needed for public/secret gists via raw URL)
+    // Use the raw Gist API — secret gists are readable without auth if you know the ID
+    document.getElementById('setup').style.display='none';
+    document.getElementById('app').classList.remove('hidden');
+    DB=Object.assign({},BLANK_DB);
+    // Add a readonly banner
+    const banner=document.createElement('div');
+    banner.id='readonly-banner';
+    banner.style.cssText='background:#1a3055;color:#f0a500;font-size:12px;font-weight:700;text-align:center;padding:6px;letter-spacing:1px;position:sticky;top:0;z-index:100';
+    banner.textContent='👁 Read-Only View — Coach Access';
+    document.getElementById('app').prepend(banner);
+    window._isReadonly=true;
+    document.body.classList.add('readonly');
+    // Load from Gist without token
+    fetch(`https://api.github.com/gists/${_gistParam}`,{headers:{'Accept':'application/vnd.github.v3+json'}})
+      .then(r=>r.ok?r.json():Promise.reject('Failed'))
+      .then(gist=>{
+        const content=gist.files?.['hamr_fall26.json']?.content||gist.files?.['hamr_hub.json']?.content||'{}';
+        const data=JSON.parse(content);
+        DB=Object.assign({},BLANK_DB,data);
+        if(!DB.drills||!DB.drills.length)DB.drills=SEED_DRILLS.map(d=>({...d}));
+        currentTab='plans';updateCounts();renderTab();
+      }).catch(()=>{
+        updateCounts();renderTab();
+        document.getElementById('readonly-banner').textContent='👁 Read-Only — loaded local data (Gist unavailable)';
+      });
+    currentTab='plans';updateCounts();renderTab();
+    return;
+  }
+
   renderSetup();
   if(gistId&&ghToken){
     gistLoad(gistId,ghToken).then(data=>{
@@ -4738,7 +4774,24 @@ function showPracticeMode(id){
           .pm-header{display:flex;align-items:flex-start;gap:12px;padding:14px;cursor:pointer}
           .pm-check{width:28px;height:28px;border-radius:50%;border:2px solid #3a4a6a;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0;color:#fff;background:#0d1b2e}
           .pm-check.checked{background:#1a7a3c;border-color:#1a7a3c}
-        </style>
+        
+/* Read-only mode — hide all mutating buttons */
+body.readonly .btn-gold:not(.readonly-ok),
+body.readonly .btn-red,
+body.readonly .btn-blue:not(.readonly-ok),
+body.readonly button[onclick*="edit"],
+body.readonly button[onclick*="add"],
+body.readonly button[onclick*="del"],
+body.readonly button[onclick*="save"],
+body.readonly button[onclick*="new"],
+body.readonly button[onclick*="import"],
+body.readonly button[onclick*="export"],
+body.readonly button[onclick*="showSettings"],
+body.readonly button[onclick*="showSync"],
+body.readonly label.btn,
+body.readonly .nav-btn-group { display:none!important; }
+body.readonly #readonly-banner { display:block!important; }
+</style>
         ${checklist}
         ${p.notes?`<div style="background:var(--surface);border-radius:12px;padding:12px 14px;margin-bottom:14px;border-left:4px solid var(--gold);font-size:13px;line-height:1.6;color:var(--muted)">${esc(p.notes)}</div>`:''}
         ${items.map(it=>renderItem(it,false)).join('')}
