@@ -2069,6 +2069,7 @@ function viewPlan(id){
       <button class="btn btn-dim btn-sm" onclick="copyPlanLink('${id}')">🔗 Copy Link</button>
       <button class="btn btn-dim btn-sm" onclick="emailPlan('${id}')">✉ Email</button>
       <button class="btn btn-dim btn-sm" onclick="reorderPlanItems()">↕ Reorder</button>
+      <button class="btn btn-green btn-sm" onclick="showPracticeMode('${id}')">📱 Practice Mode</button>
       <button class="btn btn-blue btn-sm" onclick="dlCoachSheet('${id}')">📋 Coach Sheet</button>
       <button class="btn btn-gold btn-sm" onclick="dlPlan('${id}')">🖨 Download</button>
     </div>
@@ -4557,6 +4558,188 @@ function _applyYTFields(fields,statusEl,vid,title,author,usedAI){
       <div style="font-size:10px;color:var(--green);margin-top:4px">✓ Fields filled ${usedAI?'with AI':'from keywords'} — review and adjust as needed</div>
     </div>
   </div>`;
+}
+
+
+// ═══ PRACTICE MODE ════════════════════════════════════════════
+function showPracticeMode(id){
+  const p=DB.plans.find(x=>x.id===id);if(!p)return;
+
+  // Build time map
+  const ts={};
+  if(p.startTime){
+    const[sh,sm]=p.startTime.split(':').map(Number);let mins=sh*60+sm;
+    const seen=new Set();
+    (p.items||[]).forEach(item=>{
+      const key=item.type==='station'?item.blockId:item.id;
+      if(item.type==='station'&&seen.has(item.blockId))return;
+      if(item.type==='station')seen.add(item.blockId);
+      const dur=parseInt(item.duration)||0;
+      const h=Math.floor(mins/60)%12||12,mn=String(mins%60).padStart(2,'0'),ap=mins<720?'am':'pm';
+      ts[key]=`${h}:${mn}${ap}`;
+      mins+=dur;
+    });
+  }
+
+  // Track completion per item
+  if(!p._done)p._done={};
+
+  // Group stations
+  const seen2=new Set();let qi=0;
+  const items=(p.items||[]).map(item=>{
+    if(item.type==='station'){
+      if(seen2.has(item.blockId))return null;
+      seen2.add(item.blockId);
+      const sts=(p.items||[]).filter(i=>i.blockId===item.blockId);
+      return{type:'station',blockId:item.blockId,stations:sts,time:ts[item.blockId]||'',duration:sts[0]?.duration||'',done:!!p._done[item.blockId]};
+    }
+    qi++;
+    const d=item.drillId?getDrill(item.drillId):null;
+    return{type:'activity',item,drill:d,time:ts[item.id]||'',index:qi,done:!!p._done[item.id]};
+  }).filter(Boolean);
+
+  const renderItem=(it,expanded)=>{
+    if(it.type==='station'){
+      const stCards=it.stations.map(st=>{
+        const sIds=[...new Set([...(st.drillIds||[]),...(st.drillId?[st.drillId]:[])])];
+        const sDs=sIds.map(id=>getDrill(id)).filter(Boolean);
+        const dName=sDs.length?sDs.map(d=>esc(d.name)).join(' + '):(st.customName||'Station');
+        const dDesc=sDs.map(d=>d.description||'').filter(Boolean).join('\n\n');
+        const vid=sDs[0]?ytId(sDs[0].url||''):null;
+        return`<div style="border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden">
+          <div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface);cursor:pointer"
+            onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.querySelector('.chevron').textContent=this.querySelector('.chevron').textContent==='▼'?'▲':'▼'">
+            <div style="flex:1">
+              <div style="font-weight:700;font-size:14px;color:#5b8af5">${dName}</div>
+              ${st.coach?`<div style="font-size:12px;color:var(--muted);margin-top:2px">👤 ${esc(st.coach)}</div>`:''}
+              ${st.notes?`<div style="font-size:11px;color:var(--gold);margin-top:2px">📝 ${esc(st.notes)}</div>`:''}
+            </div>
+            <span class="chevron" style="color:var(--muted);font-size:12px">▼</span>
+          </div>
+          <div style="display:none;padding:14px;border-top:1px solid var(--border)">
+            ${dDesc?`<div style="font-size:13px;line-height:1.7;color:var(--text);margin-bottom:10px;white-space:pre-wrap">${esc(dDesc)}</div>`:''}
+            ${vid?`<a href="${sDs[0].url}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;color:var(--gold);font-size:13px;font-weight:700;text-decoration:none">
+              <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:60px;border-radius:6px"/>▶ Watch Video</a>`:''}
+          </div>
+        </div>`;
+      }).join('');
+      return`<div class="pm-item${it.done?' pm-done':''}" id="pm-${it.blockId}">
+        <div class="pm-header" onclick="togglePMDone('${id}','${it.blockId}','station')">
+          <div class="pm-check${it.done?' checked':''}">${it.done?'✓':''}</div>
+          <div style="flex:1">
+            <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:#5b8af5;text-transform:uppercase;margin-bottom:2px">⊞ Stations${it.time?` · ${it.time}`:''}${it.duration?' · '+it.duration+' min':''}</div>
+          </div>
+        </div>
+        <div style="padding:0 14px 14px">${stCards}</div>
+      </div>`;
+    }
+
+    // Regular activity
+    const d=it.drill;
+    const desc=d?.description||it.item.notes||'';
+    const vid=d?ytId(d.url||''):null;
+    return`<div class="pm-item${it.done?' pm-done':''}" id="pm-${it.item.id}">
+      <div class="pm-header" onclick="togglePMExpand('${it.item.id}')">
+        <div class="pm-check${it.done?' checked':''}" onclick="event.stopPropagation();togglePMDone('${id}','${it.item.id}','item')">
+          ${it.done?'✓':''}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:16px;font-weight:700;color:${it.done?'var(--muted)':'var(--text)'}">${it.index}. ${esc(d?d.name:(it.item.customName||'Activity'))}</div>
+          <div style="display:flex;gap:10px;margin-top:3px;flex-wrap:wrap">
+            ${it.time?`<span style="font-size:12px;color:var(--green);font-weight:700">${it.time}</span>`:''}
+            ${it.item.duration?`<span style="font-size:12px;color:var(--muted)">${it.item.duration} min</span>`:''}
+            ${it.item.coach?`<span style="font-size:12px;color:var(--blue)">👤 ${esc(it.item.coach)}</span>`:''}
+            ${d?.category?`<span style="font-size:11px;color:var(--muted)">${d.category}</span>`:''}
+          </div>
+          ${it.item.notes?`<div style="font-size:12px;color:var(--gold);margin-top:3px">📝 ${esc(it.item.notes)}</div>`:''}
+        </div>
+        <span style="color:var(--muted);font-size:14px;flex-shrink:0">›</span>
+      </div>
+      <div id="pm-detail-${it.item.id}" style="display:none;padding:0 14px 14px 52px;border-top:1px solid var(--border)">
+        ${desc?`<div style="font-size:14px;line-height:1.8;color:var(--text);margin:10px 0;white-space:pre-wrap">${esc(desc)}</div>`:'<div style="font-size:13px;color:var(--muted);margin:10px 0;font-style:italic">No description available.</div>'}
+        ${vid?`<a href="${d.url}" target="_blank" style="display:inline-flex;align-items:center;gap:10px;color:var(--gold);font-size:14px;font-weight:700;text-decoration:none;margin-top:6px">
+          <img src="https://img.youtube.com/vi/${vid}/mqdefault.jpg" style="width:80px;border-radius:8px;flex-shrink:0"/>
+          <div><div>▶ Watch on YouTube</div><div style="font-size:11px;color:var(--muted);font-weight:400;margin-top:2px">${esc(d?.name||'')}</div></div>
+        </a>`:''}
+      </div>
+    </div>`;
+  };
+
+  const doneCount=(p.items||[]).filter(item=>{
+    const key=item.type==='station'?item.blockId:item.id;
+    return p._done[key];
+  }).length;
+  const totalCount=items.length;
+  const pct=totalCount?Math.round(doneCount/totalCount*100):0;
+
+  const checklist=(p.checklist||[]).length?`<div style="background:var(--surface);border-radius:12px;padding:14px;margin-bottom:14px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:10px">✅ Coach Reminders</div>
+    ${(p.checklist||[]).map((c,i)=>`<div style="display:flex;gap:10px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);font-size:14px;cursor:pointer" onclick="togglePMCheck('${id}',${i})">
+      <span style="font-size:18px;color:${c.done?'var(--green)':'var(--dim)'};flex-shrink:0">${c.done?'☑':'☐'}</span>
+      <span style="${c.done?'text-decoration:line-through;color:var(--muted)':''}">${esc(c.text)}</span>
+    </div>`).join('')}
+  </div>`:'';
+
+  document.getElementById('modal').innerHTML=`
+    <div style="position:fixed;inset:0;background:var(--bg);z-index:1000;display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:var(--navy);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <button onclick="closePracticeMode()" style="background:transparent;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0;line-height:1">←</button>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:16px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title||'Practice Plan')}</div>
+          <div style="font-size:12px;color:#f0a50088">${p.date}${p.startTime?' · '+fmtTime(p.startTime):''}${p.endTime?' – '+fmtTime(p.endTime):''}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:22px;font-weight:900;color:${pct===100?'var(--green)':'var(--gold)'};">${pct}%</div>
+          <div style="font-size:10px;color:#ffffff66">${doneCount}/${totalCount} done</div>
+        </div>
+      </div>
+      <div style="height:4px;background:var(--surface)"><div style="height:100%;background:${pct===100?'var(--green)':'var(--gold)'};width:${pct}%;transition:width .3s"></div></div>
+      <div style="flex:1;overflow-y:auto;padding:14px">
+        <style>
+          .pm-item{background:var(--surface);border-radius:12px;margin-bottom:10px;overflow:hidden;border:1px solid var(--border);transition:opacity .2s}
+          .pm-done{opacity:.55}
+          .pm-header{display:flex;align-items:flex-start;gap:12px;padding:14px;cursor:pointer}
+          .pm-check{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0;color:#fff}
+          .pm-check.checked{background:var(--green);border-color:var(--green)}
+        </style>
+        ${checklist}
+        ${p.notes?`<div style="background:var(--surface);border-radius:12px;padding:12px 14px;margin-bottom:14px;border-left:4px solid var(--gold);font-size:13px;line-height:1.6;color:var(--muted)">${esc(p.notes)}</div>`:''}
+        ${items.map(it=>renderItem(it,false)).join('')}
+        ${pct===100?`<div style="text-align:center;padding:20px;font-size:28px">🎉<br/><span style="font-size:16px;font-weight:700;color:var(--green)">Practice complete!</span></div>`:''}
+      </div>
+    </div>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function closePracticeMode(){
+  closeModal();
+  renderTab();
+}
+
+function togglePMExpand(itemId){
+  const det=document.getElementById('pm-detail-'+itemId);
+  if(!det)return;
+  det.style.display=det.style.display==='none'?'block':'none';
+  // Rotate the arrow
+  const header=det.previousElementSibling;
+  if(header){const arr=header.querySelector('span:last-child');if(arr)arr.textContent=det.style.display==='none'?'›':'⌃';}
+}
+
+function togglePMDone(planId,itemId,type){
+  const p=DB.plans.find(x=>x.id===planId);if(!p)return;
+  if(!p._done)p._done={};
+  p._done[itemId]=!p._done[itemId];
+  scheduleSave();
+  // Re-render practice mode in place
+  showPracticeMode(planId);
+}
+
+function togglePMCheck(planId,idx){
+  const p=DB.plans.find(x=>x.id===planId);if(!p)return;
+  if(!p.checklist||!p.checklist[idx])return;
+  p.checklist[idx].done=!p.checklist[idx].done;
+  scheduleSave();
+  showPracticeMode(planId);
 }
 
 </script>
