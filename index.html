@@ -2991,7 +2991,7 @@ function showFieldView(inning){
   }).join('');
 
   // Bench players
-  const bench=EG.lineup.filter(e=>!e.outForGame).filter(e=>{
+  const bench=EG.lineup.filter(e=>!e.outForGame).filter(e=>{const _bp=getPlayer(e.playerId);return _bp&&_bp.active!==false;}).filter(e=>{
     const cell=inningData[e.playerId]||{};
     const pos=(cell.subPlayerId?cell.subPosition:cell.position)||'';
     return pos==='BN'||!pos;
@@ -3220,8 +3220,10 @@ function showGameModal(isNew){
   } else {
     // Inning-by-inning grid planner
     // Batting order from lineup
-    const ordered=[...EG.lineup].filter(e=>e.battingSpot>0).sort((a,b)=>a.battingSpot-b.battingSpot);
-    const unset=EG.lineup.filter(e=>!e.battingSpot||e.battingSpot===0);
+    // Filter inactive players from display — keep them in EG.lineup for historical preservation
+    const activeLineup=EG.lineup.filter(e=>{const p=getPlayer(e.playerId);return p&&p.active!==false;});
+    const ordered=[...activeLineup].filter(e=>e.battingSpot>0).sort((a,b)=>a.battingSpot-b.battingSpot);
+    const unset=activeLineup.filter(e=>!e.battingSpot||e.battingSpot===0);
     const allInOrder=[...ordered,...unset];
     const numInnings=EG.innings||6;
     const posOpts=`<option value="">—</option>${POSITIONS.map(pos=>`<option value="${pos}">${pos}</option>`).join('')}<option value="BN">BN – Bench</option>`;
@@ -3242,8 +3244,8 @@ function showGameModal(isNew){
       // Build conflict map: per inning, which positions are used more than once
       // Only count entries whose key IS a valid active player ID
       // This filters out both out-for-game players AND stale old-format entries (batting spot keys)
-      const activePids=new Set(EG.lineup.filter(e=>!e.outForGame).map(e=>e.playerId));
-      const outPids=new Set(EG.lineup.filter(e=>e.outForGame).map(e=>e.playerId));
+      const activePids=new Set(EG.lineup.filter(e=>!e.outForGame).filter(e=>{const p=getPlayer(e.playerId);return p&&p.active!==false;}).map(e=>e.playerId));
+      const outPids=new Set(EG.lineup.filter(e=>e.outForGame).filter(e=>{const p=getPlayer(e.playerId);return p&&p.active!==false;}).map(e=>e.playerId));
 
       const conflictMap={}; // {inn: Set of conflicted positions}
       for(let inn=1;inn<=numInnings;inn++){
@@ -3259,7 +3261,7 @@ function showGameModal(isNew){
         conflictMap[inn]=conflicts;
       }
       // Available subs (players not in batting order or marked out)
-      const subPlayers=EG.lineup.filter(e=>!e.outForGame).map(e=>getPlayer(e.playerId)).filter(Boolean);
+      const subPlayers=EG.lineup.filter(e=>!e.outForGame).map(e=>getPlayer(e.playerId)).filter(p=>p&&p.active!==false);
 
       const gridRows=allInOrder.filter(e=>!e.outForGame).map(ent=>{
         const p=getPlayer(ent.playerId);if(!p)return'';
@@ -3368,7 +3370,7 @@ function showGameModal(isNew){
         </tr>`;
       }).join('');
       // Row for out-for-game players
-      const outRow=EG.lineup.filter(e=>e.outForGame).map(e=>{const p=getPlayer(e.playerId);return p?`<span class="badge" style="background:var(--red)22;color:var(--red)">OUT: ${esc(p.name.split(' ')[0])}</span>`:''}).join(' ');
+      const outRow=EG.lineup.filter(e=>e.outForGame).filter(e=>{const _op=getPlayer(e.playerId);return _op&&_op.active!==false;}).map(e=>{const p=getPlayer(e.playerId);return p?`<span class="badge" style="background:var(--red)22;color:var(--red)">OUT: ${esc(p.name.split(' ')[0])}</span>`:''}).join(' ');
 
       // Copy inning button row
       const copyBtns=Array.from({length:numInnings},(_,inn)=>inn===0?'<td></td>':`<td style="text-align:center;padding:2px 2px"><button class="btn btn-dim btn-xs" onclick="copyInning(${inn})" title="Copy Inn ${inn}">↙${inn}</button></td>`).join('')
