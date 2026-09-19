@@ -3281,7 +3281,8 @@ function showGameModal(isNew){
           const isUnset=!pos;
           let playStreak=0,benchStreak=0;
           if(isPlaying){
-            for(let j=i;j>=0;j--){const p=playerPosArr[j];if(p&&p!=='BN')playStreak++;else break;}
+            // Only count consecutive innings at the SAME position — resets on position change
+            for(let j=i;j>=0;j--){const p=playerPosArr[j];if(p&&p!=='BN'&&p===pos)playStreak++;else break;}
           }
           if(isBench){
             for(let j=i;j>=0;j--){if(playerPosArr[j]==='BN')benchStreak++;else break;}
