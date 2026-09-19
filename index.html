@@ -3446,7 +3446,7 @@ function showGameModal(isNew){
 
   showModal(`${header}${tabBtns}${body}
     <div class="row" style="margin-top:14px;gap:8px">
-      <button class="btn btn-gold" onclick="saveGame(${isNew})">Save Game</button>
+      <button class="btn btn-gold" onclick="saveGameInPlace(${isNew})">💾 Save</button>
       <button class="btn btn-blue btn-sm" onclick="printLineupCard()">🖨 Print Lineup Card</button>
       <button class="btn btn-dim" onclick="closeModal()">Cancel</button>
     </div>`,true);
@@ -3920,6 +3920,47 @@ function conflictCheck(inn,pos,excludePid){
   if(!EG||!pos||pos==='BN')return false;
   const inningData=EG.inningGrid[inn]||{};
   return Object.entries(inningData).filter(([pid])=>pid!==excludePid).some(([,c])=>(c.subPlayerId?c.subPosition:c.position)===pos);
+}
+
+function saveGameInPlace(isNew){
+  // Save all fields same as saveGame but stay in the modal
+  if(!EG)return;
+  EG.opponent=document.getElementById('g-opp')?.value||EG.opponent;
+  EG.date=document.getElementById('g-date')?.value||EG.date;
+  EG.location=document.getElementById('g-loc')?.value||EG.location;
+  const sc=parseInt(document.getElementById('g-score')?.value);
+  const osc=parseInt(document.getElementById('g-oppscore')?.value);
+  if(!isNaN(sc))EG.score=sc; if(!isNaN(osc))EG.oppScore=osc;
+  if(EG.score!==undefined&&EG.oppScore!==undefined)EG.result=EG.score>EG.oppScore?'W':EG.score<EG.oppScore?'L':'T';
+  const _playedEl=document.getElementById('g-played');
+  if(_playedEl)EG.played=_playedEl.checked;
+  const _notesEl=document.getElementById('g-notes');
+  if(_notesEl)EG.notes=_notesEl.value;
+  const activeSavePids=new Set(EG.lineup.filter(e=>!e.outForGame).map(e=>e.playerId));
+  if(EG.inningGrid&&Object.keys(EG.inningGrid).length){
+    const pInnings={};
+    Object.entries(EG.inningGrid).forEach(([inn,spots])=>{
+      Object.entries(spots).forEach(([pid,c])=>{
+        if(!activeSavePids.has(pid))return;
+        const effPid=c.subPlayerId||pid;
+        const effPos=c.subPlayerId?c.subPosition:c.position;
+        if(effPos&&effPos!=='BN')pInnings[effPid]=(pInnings[effPid]||0)+1;
+      });
+    });
+    EG.lineup.forEach(e=>{
+      if(e.outForGame){e.inningsPlayed=0;}
+      else if(pInnings[e.playerId]!==undefined){e.inningsPlayed=pInnings[e.playerId];}
+    });
+  } else {
+    EG.lineup.forEach(e=>{if(e.outForGame)e.inningsPlayed=0;});
+  }
+  if(isNew){DB.games.push(EG);isNew=false;}
+  else{const i=DB.games.findIndex(g=>g.id===EG.id);if(i>=0)DB.games[i]=EG;}
+  scheduleSave();
+  // Flash a brief saved indicator on the button without closing
+  const btn=document.querySelector('.btn-gold');
+  if(btn){const orig=btn.textContent;btn.textContent='✓ Saved!';btn.style.background='var(--green)';
+    setTimeout(()=>{btn.textContent=orig;btn.style.background='';},1500);}
 }
 
 function saveGame(isNew){if(!EG)return;
