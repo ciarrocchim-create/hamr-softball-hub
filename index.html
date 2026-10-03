@@ -3148,6 +3148,10 @@ function showGameModal(isNew){
       </select></div>
       <div><div class="lbl">Innings</div><select style="width:70px" onchange="EG.innings=parseInt(this.value);showGameModal(${isNew})">${[4,5,6,7].map(n=>`<option value="${n}"${EG.innings===n?' selected':''}>${n}</option>`).join('')}</select></div>
     </div>
+    <div style="margin-bottom:10px">
+      <div class="lbl">📝 Game Notes</div>
+      <textarea id="g-notes" rows="3" style="width:100%;box-sizing:border-box;resize:vertical;font-size:13px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);font-family:inherit" placeholder="Pre-game plans, matchup notes, in-game tweak ideas...">${esc(EG.notes||'')}</textarea>
+    </div>
     <div class="row" style="gap:8px;margin-bottom:14px;align-items:flex-end;flex-wrap:wrap">
       <div><div class="lbl">Our Score</div><input type="number" id="g-score" value="${EG.score??''}" placeholder="—" style="width:70px" onchange="updScore('score',this.value)"/></div>
       <div><div class="lbl">Their Score</div><input type="number" id="g-oppscore" value="${EG.oppScore??''}" placeholder="—" style="width:70px" onchange="updScore('oppScore',this.value)"/></div>
