@@ -2491,16 +2491,27 @@ function renderSkills(){
     const fresh=daysSince!==null&&daysSince<=7;
     const sentLabel=lastSent?`Sent ${daysSince===0?'today':daysSince===1?'yesterday':daysSince+' days ago'}`:'Never sent';
     const sentColor=fresh?'var(--green)':overdue?'var(--red)':'var(--muted)';
+    const lastVid=e.lastVideoAnalysis||null;
+    const vidDaysSince=lastVid?Math.floor((today-new Date(lastVid))/(1000*60*60*24)):null;
+    const vidOverdue=vidDaysSince!==null&&vidDaysSince>21;
+    const vidFresh=vidDaysSince!==null&&vidDaysSince<=7;
+    const vidLabel=lastVid?`Video ${vidDaysSince===0?'today':vidDaysSince===1?'yesterday':vidDaysSince+'d ago'}`:'No video';
+    const vidColor=vidFresh?'var(--green)':vidOverdue?'var(--red)':'var(--muted)';
     return `<div onclick="_skillPid='${p.id}';renderTab()" style="display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:8px;cursor:pointer;background:${on?'var(--gold)22':'var(--surface)'};border:1px solid ${on?'var(--gold)66':overdue?'var(--red)33':'var(--border)'};margin-bottom:5px;transition:.1s">
       <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:18px;color:${on?'var(--gold)':'var(--muted)'};min-width:30px">#${esc(p.number||'—')}</div>
       <div class="f1">
         <div style="font-weight:700;font-size:13px">${esc(p.name)}</div>
         <div style="font-size:11px;color:var(--muted)">${e.skills.length?e.skills.length+' focus skills':'No focus skills yet'}</div>
         ${lastSent||e.skills.length?`<div style="font-size:10px;color:${sentColor};font-weight:700;margin-top:1px">${e.skills.length?(overdue?'⚠ ':'✉ ')+sentLabel:''}</div>`:''}
+        ${lastVid?`<div style="font-size:10px;color:${vidColor};font-weight:700;margin-top:1px">📹 ${vidLabel}</div>`:''}
       </div>
-      ${overdue?`<span class="badge" style="background:var(--red)22;color:var(--red);font-size:10px">Overdue</span>`:
-        fresh?`<span class="badge" style="background:var(--green)22;color:var(--green);font-size:10px">✓ Sent</span>`:
-        e.skills.length?`<span class="badge" style="background:var(--gold)22;color:var(--gold)">${e.skills.length}</span>`:''}
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+        ${overdue?`<span class="badge" style="background:var(--red)22;color:var(--red);font-size:10px">Overdue</span>`:
+          fresh?`<span class="badge" style="background:var(--green)22;color:var(--green);font-size:10px">✓ Sent</span>`:
+          e.skills.length?`<span class="badge" style="background:var(--gold)22;color:var(--gold)">${e.skills.length}</span>`:''}
+        ${vidOverdue?`<span class="badge" style="background:var(--red)22;color:var(--red);font-size:10px">📹 Overdue</span>`:
+          vidFresh?`<span class="badge" style="background:var(--green)22;color:var(--green);font-size:10px">📹 Recent</span>`:''}
+      </div>
     </div>`;
   }).join('');
 
@@ -2563,6 +2574,21 @@ function renderSkills(){
           <button class="btn btn-gold" onclick="addSkillInp()">+ Add</button>
         </div>
         <div style="margin-top:10px"><div class="lbl" style="margin-bottom:6px">Quick Add</div><div>${qpills}</div></div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="lbl" style="margin-bottom:6px">📹 Video Analysis</div>
+          <div class="row" style="gap:8px;align-items:center;flex-wrap:wrap">
+            <div>
+              <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Last recorded</div>
+              <input type="date" id="vid-date-${_skillPid}" value="${sel.lastVideoAnalysis||''}"
+                style="font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)"
+                onchange="setVideoDate('${_skillPid}',this.value)"/>
+            </div>
+            ${sel.lastVideoAnalysis?`<div style="font-size:12px;color:${Math.floor((today-new Date(sel.lastVideoAnalysis))/(1000*60*60*24))<=7?'var(--green)':Math.floor((today-new Date(sel.lastVideoAnalysis))/(1000*60*60*24))>21?'var(--red)':'var(--text)'}">
+              ${(d=>{return d===0?'Recorded today':d===1?'Yesterday':d+' days ago';})(Math.floor((today-new Date(sel.lastVideoAnalysis))/(1000*60*60*24)))}
+            </div>`:'<div style="font-size:12px;color:var(--muted);font-style:italic">No analysis recorded yet</div>'}
+            <button class="btn btn-gold btn-sm" onclick="setVideoDate('${_skillPid}',new Date().toISOString().split('T')[0])">📹 Log Today</button>
+          </div>
+        </div>
       </div>
       ${focus.length?`
         <div class="row" style="margin-bottom:10px">
@@ -2611,6 +2637,13 @@ function clearHomework(pid){
   const idx=ps.findIndex(e=>e.playerId===pid);
   if(idx<0)return;
   ps[idx].homework=[];
+  DB.playerSkills=ps;scheduleSave();renderTab();
+}
+function setVideoDate(pid,dateStr){
+  const ps=DB.playerSkills||[];
+  let idx=ps.findIndex(e=>e.playerId===pid);
+  if(idx<0){ps.push({playerId:pid,skills:[],lastVideoAnalysis:dateStr});idx=ps.length-1;}
+  else ps[idx].lastVideoAnalysis=dateStr||null;
   DB.playerSkills=ps;scheduleSave();renderTab();
 }
 function emailHomework(pid){
