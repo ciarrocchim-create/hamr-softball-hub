@@ -2470,10 +2470,12 @@ ${frows}
 let _skillPid='';
 function renderSkills(){
   if(!DB.players.length)return'<div class="empty">Add players to your roster first.</div>';
+  // Clear selection if selected player is archived
+  if(_skillPid&&DB.players.find(p=>p.id===_skillPid)?.active===false)_skillPid='';
   const ps=DB.playerSkills||[];
   const getE=pid=>ps.find(e=>e.playerId===pid)||{playerId:pid,skills:[]};
   const sel=_skillPid?getE(_skillPid):null;
-  const selP=DB.players.find(p=>p.id===_skillPid);
+  const selP=DB.players.find(p=>p.id===_skillPid&&p.active!==false);
   const allTags=[...new Set(DB.drills.flatMap(d=>(d.tags||'').split(',').map(t=>t.trim()).filter(Boolean)))].sort();
   const freq={};ps.forEach(e=>e.skills.forEach(s=>{freq[s]=(freq[s]||[]).concat(e.playerId);}));
   const teamNeeds=Object.entries(freq).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
