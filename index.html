@@ -1534,6 +1534,7 @@ function renderPlans(){
   </div>`:'';
   const rows=activeRows;
   return `<div class="row" style="margin-bottom:18px;gap:8px;flex-wrap:wrap"><h2 class="st">📋 Practice Plans</h2><div class="f1"></div>
+    <button class="btn btn-blue btn-sm" onclick="showDrillSuggestions()" style="background:var(--blue)22;color:#5b8af5;border:1px solid var(--blue)44">🎯 Suggest Drills</button>
     <label class="btn btn-dim btn-sm">📂 Import Plans<input type="file" accept=".json" class="hidden" onchange="importPlans(this)"></label>
     <button class="btn btn-dim btn-sm" onclick="exportPlans()">📤 Export Plans</button>
     <button class="btn btn-gold" onclick="openNewPlan()">+ New Plan</button></div>${rows}${archivedSection}`;
@@ -1544,6 +1545,133 @@ function exportPlans(){
   const a=document.createElement('a');a.href=url;
   a.download=`HAMR_Plans_${new Date().toISOString().slice(0,10)}.json`;
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+function showDrillSuggestions(){
+  const ps=DB.playerSkills||[];
+  const activePlayers=DB.players.filter(p=>p.active!==false);
+
+  // 1. Collect all team focus skills and how many players have each
+  const skillCount={};
+  ps.filter(e=>activePlayers.find(p=>p.id===e.playerId)).forEach(e=>{
+    (e.skills||[]).forEach(s=>{skillCount[s]=(skillCount[s]||0)+1;});
+  });
+  const teamSkills=Object.keys(skillCount); // all skills across team
+
+  // 2. Collect homework drill IDs (drills already assigned as homework)
+  const hwDrillIds=new Set();
+  ps.forEach(e=>(e.homework||[]).forEach(id=>hwDrillIds.add(id)));
+
+  // 3. Find drills used in the last 3 practice plans (sorted most recent first)
+  const recentPlans=[...DB.plans].filter(p=>!p.archived).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,3);
+  const recentDrillIds=new Set();
+  const recentDrillPlanMap={}; // drillId -> plan title for tooltip
+  recentPlans.forEach(plan=>{
+    (plan.items||[]).forEach(item=>{
+      const ids=[...(item.drillIds||[]),...(item.drillId?[item.drillId]:[])];
+      ids.forEach(id=>{
+        recentDrillIds.add(id);
+        recentDrillPlanMap[id]=recentDrillPlanMap[id]||plan.title||plan.date;
+      });
+    });
+  });
+
+  // 4. Score every drill
+  const scored=DB.drills.map(d=>{
+    const drillTags=(d.tags||'').split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+    const drillDesc=(d.name+' '+(d.description||'')+' '+(d.tags||'')).toLowerCase();
+
+    // Skill match score: sum of player counts for each matched skill
+    let matchScore=0;
+    const matchedSkills=[];
+    teamSkills.forEach(skill=>{
+      const sk=skill.toLowerCase();
+      if(drillTags.some(t=>t.includes(sk)||sk.includes(t))||drillDesc.includes(sk)){
+        matchScore+=skillCount[skill]||1;
+        matchedSkills.push(skill);
+      }
+    });
+
+    const isHomework=hwDrillIds.has(d.id);
+    const isRecent=recentDrillIds.has(d.id);
+    const recentPlan=recentDrillPlanMap[d.id]||null;
+    const hasVideo=!!(d.url&&ytId(d.url));
+
+    // Penalty for recently used, bonus for homework alignment and video
+    let finalScore=matchScore;
+    if(isRecent)finalScore*=0.3; // strongly de-prioritize
+    if(isHomework)finalScore+=5; // boost homework drills so they surface
+    if(hasVideo)finalScore+=1;
+
+    return{d,matchScore,finalScore,matchedSkills,isHomework,isRecent,recentPlan,hasVideo};
+  }).filter(r=>r.matchScore>0||r.isHomework).sort((a,b)=>b.finalScore-a.finalScore);
+
+  if(!scored.length&&teamSkills.length===0){
+    showModal(`<div style="padding:24px;text-align:center;color:var(--muted)">
+      <div style="font-size:32px;margin-bottom:12px">⭐</div>
+      <div style="font-weight:700;font-size:15px;color:var(--text);margin-bottom:8px">No focus skills yet</div>
+      <div style="font-size:13px">Head to the <strong style="color:var(--gold)">Skills tab</strong> and assign focus skills to your players — then come back here for personalized drill recommendations.</div>
+      <button class="btn btn-gold" style="margin-top:18px" onclick="closeModal()">Got it</button>
+    </div>`);
+    return;
+  }
+
+  // 5. Group top results by category
+  const top=scored.slice(0,20);
+  const byCategory={};
+  top.forEach(r=>{
+    const cat=r.d.category||'Other';
+    if(!byCategory[cat])byCategory[cat]=[];
+    byCategory[cat].push(r);
+  });
+
+  // Build team skills summary line
+  const topSkills=Object.entries(skillCount).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([s,c])=>`<span style="background:var(--gold)22;color:var(--gold);border:1px solid var(--gold)44;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:700;display:inline-block;margin:2px">${esc(s)} <span style="opacity:.7">${c}p</span></span>`).join('');
+
+  const hwNote=hwDrillIds.size?`<div style="margin-bottom:12px;padding:8px 12px;background:var(--green)11;border:1px solid var(--green)33;border-radius:8px;font-size:12px;color:var(--green)"><strong>📋 ${hwDrillIds.size} homework drill${hwDrillIds.size!==1?'s':''}</strong> currently assigned — shown with ✏️ badge below.</div>`:'';
+  const recentNote=recentPlans.length?`<div style="margin-bottom:14px;font-size:11px;color:var(--muted)">⏱ Drills used in your last ${recentPlans.length} practice${recentPlans.length!==1?'s':''} are shown dimmed and ranked lower so you get fresh ideas.</div>`:'';
+
+  const catHtml=Object.entries(byCategory).sort((a,b)=>b[1].reduce((s,r)=>s+r.finalScore,0)-a[1].reduce((s,r)=>s+r.finalScore,0)).map(([cat,rows])=>{
+    const cc=CAT_COLOR[cat]||'#888';
+    const cards=rows.map(({d,matchedSkills,isHomework,isRecent,recentPlan,hasVideo})=>{
+      const vid=d.url&&ytId(d.url);
+      return `<div style="padding:10px 12px;border-radius:8px;background:var(--surface);border:1px solid var(--border);margin-bottom:7px;opacity:${isRecent?'.55':'1'}">
+        <div class="row" style="gap:8px;align-items:flex-start">
+          <div class="f1">
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px">${esc(d.name)}
+              ${isHomework?'<span style="margin-left:5px;font-size:10px;background:var(--green)22;color:var(--green);border:1px solid var(--green)44;border-radius:10px;padding:1px 6px">✏️ Homework</span>':''}
+              ${isRecent?`<span style="margin-left:5px;font-size:10px;background:var(--dim);color:var(--muted);border-radius:10px;padding:1px 6px">Used: ${esc(recentPlan)}</span>`:''}
+            </div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:5px">
+              ${matchedSkills.slice(0,5).map(s=>`<span style="background:var(--gold)18;color:var(--gold);border-radius:10px;padding:1px 7px;font-size:10px;font-weight:700">${esc(s)}</span>`).join('')}
+            </div>
+            ${d.description?`<div style="font-size:11px;color:var(--muted);line-height:1.4">${esc(d.description.slice(0,120))}${d.description.length>120?'…':''}</div>`:''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+            ${vid?`<a href="${esc(d.url)}" target="_blank" class="btn btn-red btn-sm" style="font-size:11px;text-decoration:none;padding:3px 8px">▶ Video</a>`:''}
+            <span class="badge" style="background:${cc}22;color:${cc};font-size:10px">${esc(cat)}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:18px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:${cc};margin-bottom:8px;padding-bottom:5px;border-bottom:2px solid ${cc}44">${cat}</div>
+      ${cards}
+    </div>`;
+  }).join('');
+
+  showModal(`
+    <div style="padding:4px 0 0">
+      ${mhdr('🎯 Drill Suggestions for Your Team')}
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:700;letter-spacing:1px;text-transform:uppercase">Team Focus Skills</div>
+        <div>${topSkills||'<span style="color:var(--muted);font-size:12px;font-style:italic">No focus skills assigned yet</span>'}</div>
+      </div>
+      ${hwNote}${recentNote}
+      <div style="max-height:60vh;overflow-y:auto;padding-right:4px">${catHtml||'<div class="empty">No matching drills found. Add more drills to your library or assign focus skills to players.</div>'}</div>
+      <button class="btn btn-gold" style="width:100%;margin-top:12px" onclick="closeModal()">Done</button>
+    </div>
+  `);
 }
 function importPlans(input){
   const file=input.files[0];if(!file)return;
