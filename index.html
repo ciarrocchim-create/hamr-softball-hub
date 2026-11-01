@@ -14,7 +14,7 @@
   --gold:#f0a500;--green:#3ddc84;--red:#f16b6b;--blue:#5b8af5;--purple:#c97af5;
   --text:#e6eaf4;--muted:#7b88a8;--dim:#252e47;
   --cat-hitting:#f0a500;--cat-pitching:#5b8af5;--cat-fielding:#3ddc84;
-  --cat-catching:#c97af5;--cat-baserunning:#f5a05b;--cat-conditioning:#f16b6b;--cat-demonstration:#2ec4c4;--cat-other:#7b88a8;
+  --cat-catching:#c97af5;--cat-baserunning:#f5a05b;--cat-conditioning:#f16b6b;--cat-other:#7b88a8;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;background:var(--navy);color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;overflow-x:hidden}
@@ -357,10 +357,10 @@ const BUILD_TIME=(()=>{
   }catch(e){return'Unknown';}
 })();
 const POSITIONS=['P','C','1B','2B','3B','SS','LF','CF','RF','DP','FLEX','EH'];
-const DRILL_CATS=['Hitting','Pitching','Fielding','Infield','Outfield','Catching','Baserunning','Conditioning','Motivation','Demonstration','Other'];
-const DRILL_TYPES=['Drill','Tip','Warmup','Progression','Motivation'];
-const TYPE_COLOR={'Drill':'#5b8af5','Tip':'#c97af5','Warmup':'#3ddc84','Progression':'#f5a05b'};
-const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catching:'#c97af5',Baserunning:'#f5a05b',Conditioning:'#f16b6b',Demonstration:'#2ec4c4',Other:'#7b88a8'};
+const DRILL_CATS=['Hitting','Pitching','Fielding','Infield','Outfield','Catching','Baserunning','Conditioning','Motivation','Other'];
+const DRILL_TYPES=['Drill','Tip','Warmup','Progression','Motivation','Demonstration'];
+const TYPE_COLOR={'Drill':'#5b8af5','Tip':'#c97af5','Warmup':'#3ddc84','Progression':'#f5a05b','Demonstration':'#2ec4c4'};
+const CAT_COLOR={Hitting:'#f0a500',Pitching:'#5b8af5',Fielding:'#3ddc84',Catching:'#c97af5',Baserunning:'#f5a05b',Conditioning:'#f16b6b',Other:'#7b88a8'};
 const GIST_ID_KEY='sh_gist_id';
 const GH_TOKEN_KEY='sh_gh_token';
 const SEED_GAMES=[];
@@ -4818,8 +4818,8 @@ Channel: "${author}"
 
 Return ONLY valid JSON (no markdown, no explanation):
 {
-  "category": one of [Hitting,Pitching,Fielding,Infield,Outfield,Catching,Baserunning,Conditioning,Motivation,Warmup,Demonstration,Other],
-  "drillType": one of [Drill,Tip,Warmup,Progression,Motivation],
+  "category": one of [Hitting,Pitching,Fielding,Infield,Outfield,Catching,Baserunning,Conditioning,Motivation,Warmup,Other],
+  "drillType": one of [Drill,Tip,Warmup,Progression,Motivation,Demonstration],
   "tags": "4-8 relevant softball skill tags, comma-separated, lowercase",
   "description": "2-3 sentence coaching description: what it teaches, how to set it up, what to look for. Written for a youth softball coach."
 }`;
@@ -4840,7 +4840,6 @@ Return ONLY valid JSON (no markdown, no explanation):
   // Keyword inference fallback
   const t=title.toLowerCase();
   const category=
-    /\bdemo\b|demonstration|breakdown|slow[- ]?mo/.test(t)?'Demonstration':
     /pitch|windmill|fastball|changeup|curveball|riseball|dropball/.test(t)?'Pitching':
     /infield|ground ball|grounder|shortstop|double play/.test(t)?'Infield':
     /outfield|fly ball|pop fly|tracking|drop step/.test(t)?'Outfield':
@@ -4852,6 +4851,7 @@ Return ONLY valid JSON (no markdown, no explanation):
     /field|glove|transfer|throwing|arm/.test(t)?'Fielding':'Other';
 
   const drillType=
+    /\bdemo\b|demonstration|breakdown|slow[- ]?mo/.test(t)?'Demonstration':
     /warmup|stretch/.test(t)?'Warmup':
     /tip|key|secret|trick/.test(t)?'Tip':
     /progression|series|part \d|step \d/.test(t)?'Progression':'Drill';
